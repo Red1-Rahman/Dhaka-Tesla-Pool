@@ -4,9 +4,10 @@ import { PoolsService } from './pools.service';
 import { PrismaService } from '../common/prisma.service';
 import { GeoModule } from '../geo/geo.module';
 import { FareModule } from '../fare/fare.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
-  imports: [GeoModule, FareModule],
+  imports: [GeoModule, FareModule, PaymentsModule],
   controllers: [PoolsController],
   providers: [PoolsService, PrismaService],
   exports: [PoolsService],

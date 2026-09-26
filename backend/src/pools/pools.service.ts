@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../common/prisma.service';
 import { GeoService } from '../geo/geo.service';
 import { FareService } from '../fare/fare.service';
+import { PaymentsService } from '../payments/payments.service';
 import { assertTransition } from '../common/status-machine';
 
 // Driver-side pooling logic: accepting a ride into a pool, advancing the
@@ -19,6 +20,7 @@ export class PoolsService {
     private readonly prisma: PrismaService,
     private readonly geoService: GeoService,
     private readonly fareService: FareService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async accept(driverId: string, rideRequestId: string) {
@@ -138,17 +140,14 @@ export class PoolsService {
       completedAt: new Date(),
     });
 
-    // One Payment row per member, per docs/database-schema.md. Method
-    // defaults to cash for the MVP, see payments/payment.service.ts
-    // (feature/driver-flow) for where a real method choice gets wired in.
+    // One charge per member, per docs/database-schema.md. Method defaults
+    // to cash for the MVP, routed through PaymentsService so a real
+    // gateway later only requires changing that one class.
     for (const ride of pool.rideRequests) {
-      await this.prisma.payment.create({
-        data: {
-          rideRequestId: ride.id,
-          method: 'cash',
-          amountPaisa: ride.farePaisa,
-          status: 'completed',
-        },
+      await this.paymentsService.charge({
+        rideRequestId: ride.id,
+        amountPaisa: ride.farePaisa,
+        method: 'cash',
       });
     }
 
