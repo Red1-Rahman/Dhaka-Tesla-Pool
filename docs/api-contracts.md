@@ -65,7 +65,7 @@ Returns the ride owned by the caller, `403` if the caller is not the passenger o
 List the caller's own ride history, most recent first.
 
 ### PATCH /rides/:id/cancel
-Allowed only while status is `REQUESTED` or `MATCHED`. Returns `409` if the ride has already started or completed.
+Allowed only while status is `REQUESTED` or `MATCHED`. Returns `409` if the ride has already started or completed. Enforced via the shared transition map in `common/status-machine.ts` as of `feature/tesla-pooling`, matching the table below.
 
 ## Vehicles and driver status
 

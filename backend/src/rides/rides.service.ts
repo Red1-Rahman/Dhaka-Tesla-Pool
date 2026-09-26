@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { GeoService } from '../geo/geo.service';
 import { FareService } from '../fare/fare.service';
+import { assertTransition } from '../common/status-machine';
 import { ZONES } from '../geo/zones.data';
 import { CreateRideDto } from './dto/create-ride.dto';
 import { CancelRideDto } from './dto/cancel-ride.dto';
@@ -80,12 +81,10 @@ export class RidesService {
       throw new ForbiddenException("You cannot cancel another passenger's ride");
     }
 
-    // Only REQUESTED is reachable from this branch's scope. Once pooling
-    // lands, this check moves to the shared status-machine.ts so MATCHED
-    // rides can also be cancelled, per docs/specs.md's lifecycle.
-    if (ride.status !== 'REQUESTED') {
-      throw new ConflictException(`Cannot cancel a ride in status ${ride.status}`);
-    }
+    // Now that pooling exists, MATCHED rides can also be cancelled, per
+    // the transition table in docs/api-contracts.md. Throws 409 for any
+    // other status via the shared status machine.
+    assertTransition(ride.status, 'CANCELLED');
 
     const updated = await this.prisma.rideRequest.update({
       where: { id: rideId },

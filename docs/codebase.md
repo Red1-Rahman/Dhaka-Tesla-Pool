@@ -85,7 +85,6 @@ dhaka-tesla-pool/
 │   │   ├── common/
 │   │   │   ├── status-machine.ts
 │   │   │   ├── money.ts
-│   │   │   ├── fare-split.ts
 │   │   │   ├── prisma.service.ts
 │   │   │   └── filters/
 │   │   │       └── http-exception.filter.ts
@@ -97,7 +96,6 @@ dhaka-tesla-pool/
 │       ├── rides.service.spec.ts
 │       ├── pools.service.spec.ts
 │       ├── fare.service.spec.ts
-│       ├── fare-split.spec.ts
 │       ├── pools.e2e-spec.ts
 │       └── auth.e2e-spec.ts
 │
