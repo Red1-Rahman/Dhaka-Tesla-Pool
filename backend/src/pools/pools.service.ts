@@ -37,24 +37,31 @@ export class PoolsService {
     assertTransition(ride.status, 'MATCHED');
 
     return this.prisma.$transaction(async (tx) => {
-      // A vehicle carries at most one open pool at a time. Lock its row,
-      // if it exists, so a concurrent accept() on the same pool has to
-      // wait for this transaction to finish before reading the seat
-      // count, this is the fix for the last-seat race in docs/specs.md.
+      // A vehicle carries at most one open pool at a time. Find its id
+      // first, this initial read can be stale, that's fine, it's only
+      // used to know whether a pool exists at all.
       const existingPool = await tx.pool.findFirst({
         where: { vehicleId: vehicle.id, status: 'MATCHED' },
-        include: { rideRequests: true },
+        select: { id: true },
       });
 
-      const pool =
-        existingPool ??
-        (await tx.pool.create({
-          data: { vehicleId: vehicle.id, status: 'MATCHED' },
-          include: { rideRequests: true },
-        }));
+      let pool: { id: string; rideRequests: { pickupZone: string; seatsRequested: number }[] };
 
       if (existingPool) {
-        await tx.$queryRaw`SELECT id FROM "pools" WHERE id = ${pool.id} FOR UPDATE`;
+        // Lock the pool row so a concurrent accept() on the same pool
+        // blocks here until this transaction commits or rolls back.
+        await tx.$queryRaw`SELECT id FROM "pools" WHERE id = ${existingPool.id} FOR UPDATE`;
+
+        // Re-read membership AFTER the lock is held, not before. The
+        // findFirst above and this read can straddle another
+        // transaction's commit, so the pre-lock snapshot cannot be
+        // trusted for the capacity and compatibility checks below, only
+        // this post-lock read reflects every membership already
+        // committed by the time we act.
+        pool = await tx.pool.findUniqueOrThrow({
+          where: { id: existingPool.id },
+          select: { id: true, rideRequests: { select: { pickupZone: true, seatsRequested: true } } },
+        });
 
         const compatible = pool.rideRequests.every((member) =>
           this.geoService.pickupZonesCompatible(member.pickupZone, ride.pickupZone),
@@ -69,6 +76,14 @@ export class PoolsService {
         if (seatsTaken + ride.seatsRequested > vehicle.capacity) {
           throw new ConflictException('Vehicle capacity would be exceeded');
         }
+      } else {
+        // No pool exists yet for this vehicle, nothing to race over,
+        // this insert is the first membership by definition.
+        const created = await tx.pool.create({
+          data: { vehicleId: vehicle.id, status: 'MATCHED' },
+          select: { id: true },
+        });
+        pool = { id: created.id, rideRequests: [] };
       }
 
       const isPooled = pool.rideRequests.length > 0;
