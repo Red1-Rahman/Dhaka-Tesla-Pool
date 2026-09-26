@@ -1,0 +1,132 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  PASSENGER
+  DRIVER
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  name               String
+  phone              String   @unique
+  passwordHash       String   @map("password_hash")
+  role               Role
+  walletBalancePaisa Int      @default(0) @map("wallet_balance_paisa")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  // A driver owns exactly one vehicle in this MVP (Jashim owns Bullet).
+  vehicle      Vehicle?
+  rideRequests RideRequest[]
+
+  @@map("users")
+}
+
+model Vehicle {
+  id        String   @id @default(uuid())
+  driverId  String   @unique @map("driver_id")
+  driver    User     @relation(fields: [driverId], references: [id])
+  name      String
+  capacity  Int
+  isOnline  Boolean  @default(false) @map("is_online")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pools Pool[]
+
+  @@map("vehicles")
+}
+
+model RideRequest {
+  id             String   @id @default(uuid())
+  passengerId    String   @map("passenger_id")
+  passenger      User     @relation(fields: [passengerId], references: [id])
+  pickupZone     String   @map("pickup_zone")
+  dropoffZone    String   @map("dropoff_zone")
+  pickupLat      Float    @map("pickup_lat")
+  pickupLng      Float    @map("pickup_lng")
+  dropoffLat     Float    @map("dropoff_lat")
+  dropoffLng     Float    @map("dropoff_lng")
+  seatsRequested Int      @default(1) @map("seats_requested")
+  // Status is a plain string, not a Prisma/DB enum, on purpose: the
+  // allowed values and their transitions live in one place in application
+  // code (src/common/status-machine.ts), see docs/conventions.md. Adding
+  // a new status later is a one-line code change, not a migration.
+  status         String   @default("REQUESTED")
+  poolId         String?  @map("pool_id")
+  pool           Pool?    @relation(fields: [poolId], references: [id])
+  farePaisa      Int      @map("fare_paisa")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  membership    PoolMembership?
+  statusHistory RideStatusHistory[]
+  payment       Payment?
+
+  @@index([passengerId])
+  @@index([poolId])
+  @@map("ride_requests")
+}
+
+model Pool {
+  id          String    @id @default(uuid())
+  vehicleId   String    @map("vehicle_id")
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id])
+  status      String    @default("MATCHED")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+
+  rideRequests RideRequest[]
+  memberships  PoolMembership[]
+
+  @@index([vehicleId])
+  @@map("pools")
+}
+
+// Join table between Pool and RideRequest. This is what lets the seat
+// capacity check count and lock rows cheaply, instead of scanning every
+// ride request in the table. See docs/specs.md for the concurrency logic
+// that reads and writes this table inside a transaction.
+model PoolMembership {
+  id            String      @id @default(uuid())
+  poolId        String      @map("pool_id")
+  pool          Pool        @relation(fields: [poolId], references: [id])
+  rideRequestId String      @unique @map("ride_request_id")
+  rideRequest   RideRequest @relation(fields: [rideRequestId], references: [id])
+  seatIndex     Int         @map("seat_index")
+
+  @@unique([poolId, rideRequestId])
+  @@map("pool_memberships")
+}
+
+// Append-only audit log. Every status transition writes one row here,
+// this is what answers "explain exactly what happened" after a ride ends.
+model RideStatusHistory {
+  id            String      @id @default(uuid())
+  rideRequestId String      @map("ride_request_id")
+  rideRequest   RideRequest @relation(fields: [rideRequestId], references: [id])
+  fromStatus    String      @map("from_status")
+  toStatus      String      @map("to_status")
+  changedAt     DateTime    @default(now()) @map("changed_at")
+
+  @@index([rideRequestId])
+  @@map("ride_status_history")
+}
+
+model Payment {
+  id            String      @id @default(uuid())
+  rideRequestId String      @unique @map("ride_request_id")
+  rideRequest   RideRequest @relation(fields: [rideRequestId], references: [id])
+  // "cash" or "teslapay", plain string since there is no real gateway yet.
+  method        String
+  amountPaisa   Int         @map("amount_paisa")
+  status        String      @default("pending")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  @@map("payments")
+}
