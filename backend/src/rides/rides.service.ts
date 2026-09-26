@@ -75,6 +75,26 @@ export class RidesService {
     return rides.map((ride) => this.toResponse(ride));
   }
 
+  // Deliberately simple: every unmatched REQUESTED ride, not filtered by
+  // driver location, since drivers have no tracked live location in this
+  // MVP, only a vehicle and an online/offline flag. Zone-based filtering
+  // happens at accept() time instead (PoolsService), where it actually
+  // has a vehicle and an existing pool to compare against.
+  async findAvailableForDrivers() {
+    const rides = await this.prisma.rideRequest.findMany({
+      where: { status: 'REQUESTED', poolId: null },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rides.map((ride) => ({
+      id: ride.id,
+      pickup_zone: ride.pickupZone,
+      dropoff_zone: ride.dropoffZone,
+      seats_requested: ride.seatsRequested,
+      fare_paisa: ride.farePaisa,
+      created_at: ride.createdAt,
+    }));
+  }
+
   async cancel(passengerId: string, rideId: string, dto: CancelRideDto) {
     const ride = await this.findByIdOrThrow(rideId);
     if (ride.passengerId !== passengerId) {
