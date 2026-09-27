@@ -3,6 +3,43 @@ import type { RideRequestResponse, Zone } from "@/types/api"
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1"
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode: number,
+    public readonly messages?: string[],
+  ) {
+    super(message)
+    this.name = "ApiError"
+  }
+}
+
+function toErrorMessage(rawMessage: unknown, fallback: string): string {
+  if (Array.isArray(rawMessage)) {
+    const messages = rawMessage.filter(
+      (message): message is string => typeof message === "string",
+    )
+
+    if (messages.length > 0) {
+      return messages.join(", ")
+    }
+  }
+
+  if (typeof rawMessage === "string") {
+    return rawMessage
+  }
+
+  return fallback
+}
+
+function getResponseMessage(body: unknown): unknown {
+  if (typeof body === "object" && body !== null && "message" in body) {
+    return (body as { message?: unknown }).message
+  }
+
+  return undefined
+}
+
 interface CreateRideInput {
   pickupZone: Zone
   dropoffZone: Zone
@@ -28,12 +65,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
 
   if (!response.ok) {
-    const body = await response
-      .json()
-      .catch(() => ({ message: response.statusText }))
+    const fallback = `Request to ${path} failed with ${response.status}`
 
-    throw new Error(
-      body.message ?? `Request to ${path} failed with ${response.status}`,
+    const body = await response.json().catch(() => null)
+    const rawMessage = getResponseMessage(body)
+
+    const messages = Array.isArray(rawMessage)
+      ? rawMessage.filter(
+          (message): message is string => typeof message === "string",
+        )
+      : undefined
+
+    throw new ApiError(
+      toErrorMessage(
+        rawMessage,
+        response.statusText || fallback,
+      ),
+      response.status,
+      messages,
     )
   }
 
