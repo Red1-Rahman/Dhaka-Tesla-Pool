@@ -1,30 +1,29 @@
-import { IsIn, IsLatitude, IsLongitude, IsInt, Min, Max } from 'class-validator';
+import { IsIn, IsInt, IsLatitude, IsLongitude, Max, Min } from 'class-validator';
 import { ZONE_NAMES } from '../../geo/zones.data';
 
-// Field names match docs/api-contracts.md's request body exactly
-// (snake_case), so the wire format needs no transform layer between
-// the documented contract and what the controller receives.
+// HTTP-facing field names use camelCase.
+// PostgreSQL snake_case naming remains isolated to the Prisma @map(...) layer.
 export class CreateRideDto {
   @IsIn(ZONE_NAMES)
-  pickup_zone: string;
+  pickupZone: string;
 
   @IsIn(ZONE_NAMES)
-  dropoff_zone: string;
+  dropoffZone: string;
 
   @IsLatitude()
-  pickup_lat: number;
+  pickupLat: number;
 
   @IsLongitude()
-  pickup_lng: number;
+  pickupLng: number;
 
   @IsLatitude()
-  dropoff_lat: number;
+  dropoffLat: number;
 
   @IsLongitude()
-  dropoff_lng: number;
+  dropoffLng: number;
 
   @IsInt()
   @Min(1)
   @Max(3) // Bullet's capacity, see docs/database-schema.md
-  seats_requested: number;
+  seatsRequested: number;
 }
