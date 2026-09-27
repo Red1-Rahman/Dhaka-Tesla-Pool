@@ -45,6 +45,14 @@ One commit equals one understandable logical change. Avoid vague messages (`upda
 - Prefer explicit return types on service functions, it doubles as documentation when reading the file.
 - Status transition checks always go through `common/status-machine.ts`, never a hand-written `if (status === 'X')` chain duplicated elsewhere.
 
+## API casing
+
+- HTTP request and response JSON uses `camelCase`.
+- TypeScript DTOs, interfaces, variables, and service-level objects use `camelCase`.
+- PostgreSQL column names use `snake_case`.
+- Prisma `@map(...)` is the boundary between application field names and database column names.
+- The frontend API client does not perform casing conversion; frontend types match the backend HTTP contract directly.
+
 ## Testing conventions
 
 - One test file per service (`rides.service.spec.ts`), integration tests for endpoints that touch the database or concurrency (`pools.e2e-spec.ts`).
