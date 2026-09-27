@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  --canvas: #F6F5F1;
+  --surface: #FFFFFF;
+  --surface-2: #EFEDE7;
+  --ink: #111113;
+  --muted: #6B6B6B;
+  --faint: #A8A8A8;
+  --primary: #0F5132;
+  --primary-ink: #FFFFFF;
+  --accent: #E8FF59;
+  --danger: #E5484D;
+  --warning: #E8A23D;
+  --hairline: rgba(17, 17, 19, .1);
+}
+.dark {
+  --canvas: #0B0B0C;
+  --surface: #141416;
+  --surface-2: #1C1C1F;
+  --ink: #F4F3EF;
+  --muted: #A8A8A8;
+  --faint: #6B6B6B;
+  --primary: #1F7A4D;
+  --hairline: rgba(244, 243, 239, .12);
+  /* accent, danger, warning intentionally stay constant across modes —
+     they're chip/badge fills with fixed dark text, not page-background
+     tones, so they don't flip the way canvas/surface/ink do. */
+}
+* { box-sizing: border-box; }
+html { background: var(--canvas); }
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 15px;
+  line-height: 22px;
+}
+button, input { font: inherit; }
+::selection { background: var(--accent); color: #111113; }
+.font-mono {
+  font-family: var(--font-geist-mono), monospace;
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
