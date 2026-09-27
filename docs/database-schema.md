@@ -87,9 +87,9 @@ erDiagram
 
 **PoolMembership**: the join table that enforces "occupied seats never exceed capacity." A unique constraint on `(pool_id, ride_request_id)` prevents double-joining, and the seat-count check happens inside the transaction described in `specs.md`.
 
-**RideStatusHistory**: append-only audit log. Every status transition writes a row here, which is what lets you answer "explain exactly what happened" after a ride completes, per the brief's Section 2.
+**RideStatusHistory**: append-only audit log. Every status transition writes a row here, which is what lets you answer "explain exactly what happened" after a ride completes, per the brief's Section 2. The first row for a ride is a slight exception: it records `fromStatus: 'NONE'` at creation, capturing the initial state rather than an actual transition, `'NONE'` is not a recognized status in `status-machine.ts`'s transition map and this first row is written directly, not through `assertTransition()`.
 
-**Payment**: one row per ride, `method` and `status` are simple strings (`pending`, `completed`, `failed`) since there is no real payment gateway in the MVP.
+**Payment**: one row per ride, `status` is a plain string. The MVP only ever writes `'completed'`, `charge()` in `payments.service.ts` has no failure path modeled (no retry, no rejected charge), since cash and simulated TeslaPay both succeed immediately with no real gateway to fail against. `'pending'` and `'failed'` are reasonable states to add once a real gateway exists, but are not currently reachable.
 
 ## Constraints and indexes
 
@@ -103,3 +103,16 @@ erDiagram
 ## Why a join table instead of a foreign key on RideRequest alone
 
 `RideRequest.pool_id` tells you which pool a request belongs to, but `PoolMembership` is what lets you enforce and query seat occupancy cleanly (count rows, lock rows) without scanning every ride request in the table. It also gives you a natural place to store `seat_index` if you ever want deterministic seat assignment.
+
+## Migration status
+
+The schema above is applied via `backend/prisma/migrations/20260926120000_init/migration.sql`, generated from `schema.prisma` with `npx prisma migrate dev`, this is the first real migration, not just a schema file that was never run. The generated index and constraint names, if you need to reference them directly in a query or a support ticket, are:
+
+- `users_phone_key`, `vehicles_driver_id_key`
+- `ride_requests_passenger_id_idx`, `ride_requests_pool_id_idx`
+- `pools_vehicle_id_idx`
+- `pool_memberships_ride_request_id_key` (enforces one membership per ride request), `pool_memberships_pool_id_ride_request_id_key` (the composite uniqueness described above)
+- `ride_status_history_ride_request_id_idx`
+- `payments_ride_request_id_key`
+
+`docker-compose.yml`'s `api` service runs `npx prisma migrate deploy` on startup, which applies this migration file, it does not generate new ones. Any future schema change needs a new migration created locally with `npx prisma migrate dev --name <description>` and committed alongside the `schema.prisma` change in the same PR.

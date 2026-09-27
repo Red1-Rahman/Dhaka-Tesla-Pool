@@ -1,7 +1,7 @@
+// backend/src/pools/pools.module.ts
 import { Module } from '@nestjs/common';
 import { PoolsController } from './pools.controller';
 import { PoolsService } from './pools.service';
-import { PrismaService } from '../common/prisma.service';
 import { GeoModule } from '../geo/geo.module';
 import { FareModule } from '../fare/fare.module';
 import { PaymentsModule } from '../payments/payments.module';
@@ -9,7 +9,7 @@ import { PaymentsModule } from '../payments/payments.module';
 @Module({
   imports: [GeoModule, FareModule, PaymentsModule],
   controllers: [PoolsController],
-  providers: [PoolsService, PrismaService],
+  providers: [PoolsService],
   exports: [PoolsService],
 })
 export class PoolsModule {}

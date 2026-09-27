@@ -1,11 +1,11 @@
+// backend/src/vehicles/vehicles.module.ts
 import { Module } from '@nestjs/common';
 import { VehiclesController } from './vehicles.controller';
 import { VehiclesService } from './vehicles.service';
-import { PrismaService } from '../common/prisma.service';
 
 @Module({
   controllers: [VehiclesController],
-  providers: [VehiclesService, PrismaService],
+  providers: [VehiclesService],
   exports: [VehiclesService],
 })
 export class VehiclesModule {}
