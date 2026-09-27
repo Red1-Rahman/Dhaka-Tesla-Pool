@@ -16,8 +16,10 @@ dhaka-tesla-pool/
 │
 ├── backend/
 │   ├── Dockerfile
+│   ├── .dockerignore
 │   ├── package.json
 │   ├── tsconfig.json
+│   ├── tsconfig.build.json
 │   ├── nest-cli.json
 │   ├── prisma/
 │   │   ├── schema.prisma
@@ -82,10 +84,15 @@ dhaka-tesla-pool/
 │   │   │   └── dto/
 │   │   │       └── charge.dto.ts
 │   │   │
+│   │   ├── health/
+│   │   │   ├── health.module.ts
+│   │   │   └── health.controller.ts
+│   │   │
 │   │   ├── common/
 │   │   │   ├── status-machine.ts
 │   │   │   ├── money.ts
 │   │   │   ├── prisma.service.ts
+│   │   │   ├── prisma.module.ts
 │   │   │   └── filters/
 │   │   │       └── http-exception.filter.ts
 │   │   │
