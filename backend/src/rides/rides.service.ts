@@ -20,12 +20,12 @@ export class RidesService {
   ) {}
 
   async create(passengerId: string, dto: CreateRideDto) {
-    const pickup = ZONES[dto.pickup_zone];
-    const dropoff = ZONES[dto.dropoff_zone];
+    const pickup = ZONES[dto.pickupZone];
+    const dropoff = ZONES[dto.dropoffZone];
 
     const distanceKm = this.geoService.distanceKm(
-      { lat: dto.pickup_lat, lng: dto.pickup_lng },
-      { lat: dto.dropoff_lat, lng: dto.dropoff_lng },
+      { lat: dto.pickupLat, lng: dto.pickupLng },
+      { lat: dto.dropoffLat, lng: dto.dropoffLng },
     );
 
     // Not pooled at creation time, a fare is quoted solo and only
@@ -38,11 +38,11 @@ export class RidesService {
         passengerId,
         pickupZone: pickup.name,
         dropoffZone: dropoff.name,
-        pickupLat: dto.pickup_lat,
-        pickupLng: dto.pickup_lng,
-        dropoffLat: dto.dropoff_lat,
-        dropoffLng: dto.dropoff_lng,
-        seatsRequested: dto.seats_requested,
+        pickupLat: dto.pickupLat,
+        pickupLng: dto.pickupLng,
+        dropoffLat: dto.dropoffLat,
+        dropoffLng: dto.dropoffLng,
+        seatsRequested: dto.seatsRequested,
         farePaisa,
         status: 'REQUESTED',
       },
@@ -72,6 +72,7 @@ export class RidesService {
       where: { passengerId },
       orderBy: { createdAt: 'desc' },
     });
+
     return rides.map((ride) => this.toResponse(ride));
   }
 
@@ -85,18 +86,20 @@ export class RidesService {
       where: { status: 'REQUESTED', poolId: null },
       orderBy: { createdAt: 'asc' },
     });
+
     return rides.map((ride) => ({
       id: ride.id,
-      pickup_zone: ride.pickupZone,
-      dropoff_zone: ride.dropoffZone,
-      seats_requested: ride.seatsRequested,
-      fare_paisa: ride.farePaisa,
-      created_at: ride.createdAt,
+      pickupZone: ride.pickupZone,
+      dropoffZone: ride.dropoffZone,
+      seatsRequested: ride.seatsRequested,
+      farePaisa: ride.farePaisa,
+      createdAt: ride.createdAt,
     }));
   }
 
   async cancel(passengerId: string, rideId: string, dto: CancelRideDto) {
     const ride = await this.findByIdOrThrow(rideId);
+
     if (ride.passengerId !== passengerId) {
       throw new ForbiddenException("You cannot cancel another passenger's ride");
     }
@@ -123,16 +126,20 @@ export class RidesService {
   }
 
   private async findByIdOrThrow(rideId: string) {
-    const ride = await this.prisma.rideRequest.findUnique({ where: { id: rideId } });
+    const ride = await this.prisma.rideRequest.findUnique({
+      where: { id: rideId },
+    });
+
     if (!ride) {
       throw new NotFoundException('Ride request not found');
     }
+
     return ride;
   }
 
-  // Shapes the response per docs/api-contracts.md, keeps internal field
-  // names (poolId, farePaisa) from leaking implementation detail changes
-  // straight into the API surface unchecked.
+  // Shapes the HTTP response using the API's camelCase convention.
+  // Internal Prisma field names are already camelCase, while PostgreSQL
+  // snake_case naming remains isolated behind Prisma @map(...) mappings.
   private toResponse(
     ride: {
       id: string;
@@ -146,10 +153,10 @@ export class RidesService {
     return {
       id: ride.id,
       status: ride.status,
-      fare_paisa: ride.farePaisa,
-      pool_id: ride.poolId,
-      created_at: ride.createdAt,
-      ...(cancelReason ? { cancel_reason: cancelReason } : {}),
+      farePaisa: ride.farePaisa,
+      poolId: ride.poolId,
+      createdAt: ride.createdAt,
+      ...(cancelReason ? { cancelReason } : {}),
     };
   }
 }
