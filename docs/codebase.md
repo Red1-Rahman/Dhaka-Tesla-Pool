@@ -2,137 +2,185 @@
 
 ```
 dhaka-tesla-pool/
-├── docker-compose.yml
-├── .env.example
-├── README.md
-├── docs/
-│   ├── architecture.md
-│   ├── database-schema.md
-│   ├── api-contracts.md
-│   ├── specs.md
-│   ├── tech-stack.md
-│   ├── conventions.md
-│   └── codebase.md
+│   .env.example
+│   .gitignore
+│   docker-compose.yml
+│   README.md
 │
-├── backend/
-│   ├── Dockerfile
-│   ├── .dockerignore
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── tsconfig.build.json
-│   ├── nest-cli.json
-│   ├── prisma/
-│   │   ├── schema.prisma
-│   │   ├── seed.ts
-│   │   └── migrations/
-│   ├── src/
-│   │   ├── main.ts
-│   │   ├── app.module.ts
-│   │   │
-│   │   ├── auth/
-│   │   │   ├── auth.module.ts
-│   │   │   ├── auth.controller.ts
-│   │   │   ├── auth.service.ts
-│   │   │   ├── jwt.strategy.ts
-│   │   │   ├── roles.guard.ts
-│   │   │   └── dto/
-│   │   │       ├── signup.dto.ts
-│   │   │       └── signin.dto.ts
-│   │   │
-│   │   ├── users/
-│   │   │   ├── users.module.ts
-│   │   │   ├── users.controller.ts
-│   │   │   ├── users.service.ts
-│   │   │   └── dto/
-│   │   │       └── update-user.dto.ts
-│   │   │
-│   │   ├── vehicles/
-│   │   │   ├── vehicles.module.ts
-│   │   │   ├── vehicles.controller.ts
-│   │   │   ├── vehicles.service.ts
-│   │   │   └── dto/
-│   │   │       └── set-online.dto.ts
-│   │   │
-│   │   ├── rides/
-│   │   │   ├── rides.module.ts
-│   │   │   ├── rides.controller.ts
-│   │   │   ├── rides.service.ts
-│   │   │   └── dto/
-│   │   │       ├── create-ride.dto.ts
-│   │   │       └── cancel-ride.dto.ts
-│   │   │
-│   │   ├── pools/
-│   │   │   ├── pools.module.ts
-│   │   │   ├── pools.controller.ts
-│   │   │   ├── pools.service.ts
-│   │   │   └── dto/
-│   │   │       └── accept-ride.dto.ts
-│   │   │
-│   │   ├── fare/
-│   │   │   ├── fare.module.ts
-│   │   │   ├── fare.service.ts
-│   │   │   └── fare.constants.ts
-│   │   │
-│   │   ├── geo/
-│   │   │   ├── geo.module.ts
-│   │   │   ├── geo.service.ts
-│   │   │   └── zones.data.ts
-│   │   │
-│   │   ├── payments/
-│   │   │   ├── payments.module.ts
-│   │   │   ├── payments.service.ts
-│   │   │   └── dto/
-│   │   │       └── charge.dto.ts
-│   │   │
-│   │   ├── health/
-│   │   │   ├── health.module.ts
-│   │   │   └── health.controller.ts
-│   │   │
-│   │   ├── common/
-│   │   │   ├── status-machine.ts
-│   │   │   ├── money.ts
-│   │   │   ├── prisma.service.ts
-│   │   │   ├── prisma.module.ts
-│   │   │   └── filters/
-│   │   │       └── http-exception.filter.ts
-│   │   │
-│   │   └── config/
-│   │       └── env.validation.ts
+├───backend
+│   │   .dockerignore
+│   │   Dockerfile
+│   │   nest-cli.json
+│   │   package-lock.json
+│   │   package.json
+│   │   tsconfig.build.json
+│   │   tsconfig.json
 │   │
-│   └── test/
-│       ├── rides.service.spec.ts
-│       ├── pools.service.spec.ts
-│       ├── fare.service.spec.ts
-│       ├── pools.e2e-spec.ts
-│       └── auth.e2e-spec.ts
+│   ├───prisma
+│   │   │   schema.prisma
+│   │   │   seed.ts
+│   │   │
+│   │   └───migrations
+│   │       │   migration_lock.toml
+│   │       │
+│   │       └───20260926120000_init
+│   │               migration.sql
+│   │
+│   └───src
+│       │   app.module.ts
+│       │   main.ts
+│       │
+│       ├───auth
+│       │   │   auth.controller.ts
+│       │   │   auth.module.ts
+│       │   │   auth.service.ts
+│       │   │   jwt.strategy.ts
+│       │   │   roles.guard.ts
+│       │   │
+│       │   └───dto
+│       │           signin.dto.ts
+│       │           signup.dto.ts
+│       │
+│       ├───common
+│       │   │   money.ts
+│       │   │   prisma.module.ts
+│       │   │   prisma.service.ts
+│       │   │   status-machine.ts
+│       │   │
+│       │   └───filters
+│       │           http-exception.filter.ts
+│       │
+│       ├───config
+│       │       env.validation.ts
+│       │
+│       ├───fare
+│       │       fare.constants.ts
+│       │       fare.module.ts
+│       │       fare.service.ts
+│       │
+│       ├───geo
+│       │       geo.module.ts
+│       │       geo.service.ts
+│       │       zones.data.ts
+│       │
+│       ├───health
+│       │       health.controller.ts
+│       │       health.module.ts
+│       │
+│       ├───payments
+│       │   │   payments.module.ts
+│       │   │   payments.service.ts
+│       │   │
+│       │   └───dto
+│       │           charge.dto.ts
+│       │
+│       ├───pools
+│       │   │   pools.controller.ts
+│       │   │   pools.module.ts
+│       │   │   pools.service.ts
+│       │   │
+│       │   └───dto
+│       │           accept-ride.dto.ts
+│       │
+│       ├───rides
+│       │   │   rides.controller.ts
+│       │   │   rides.module.ts
+│       │   │   rides.service.ts
+│       │   │
+│       │   └───dto
+│       │           cancel-ride.dto.ts
+│       │           create-ride.dto.ts
+│       │
+│       ├───users
+│       │   │   users.controller.ts
+│       │   │   users.module.ts
+│       │   │   users.service.ts
+│       │   │
+│       │   └───dto
+│       │           update-user.dto.ts
+│       │
+│       └───vehicles
+│           │   vehicles.controller.ts
+│           │   vehicles.module.ts
+│           │   vehicles.service.ts
+│           │
+│           └───dto
+│                   set-online.dto.ts
 │
-└── frontend/
-    ├── Dockerfile
-    ├── package.json
-    ├── tsconfig.json
-    ├── next.config.js
-    ├── app/
-    │   ├── layout.tsx
-    │   ├── page.tsx
-    │   ├── (auth)/
-    │   │   ├── signin/page.tsx
-    │   │   └── signup/page.tsx
-    │   ├── (passenger)/
-    │   │   ├── request/page.tsx
-    │   │   ├── rides/page.tsx
-    │   │   └── rides/[id]/page.tsx
-    │   └── (driver)/
-    │       ├── dashboard/page.tsx
-    │       ├── pools/[id]/page.tsx
-    │       └── vehicle/page.tsx
-    ├── components/
-    │   ├── RideRequestForm.tsx
-    │   ├── RideStatusBadge.tsx
-    │   ├── PoolPassengerList.tsx
-    │   └── FareBreakdown.tsx
-    ├── lib/
-    │   ├── api-client.ts
-    │   └── auth-context.tsx
-    └── types/
-        └── api.ts
+├───docs
+│       api-contracts.md
+│       architecture.md
+│       codebase.md
+│       conventions.md
+│       database-schema.md
+│       specs.md
+│       tech-stack.md
+│
+└───frontend
+    │   Dockerfile
+    │   next.config.js
+    │   package-lock.json
+    │   package.json
+    │   pnpm-lock.yaml
+    │   postcss.config.mjs
+    │   tsconfig.json
+    │
+    ├───app
+    │   │   globals.css
+    │   │   layout.tsx
+    │   │   page.tsx
+    │   │
+    │   ├───(auth)
+    │   │   ├───signin
+    │   │   │       page.tsx
+    │   │   │
+    │   │   └───signup
+    │   │           page.tsx
+    │   │
+    │   ├───(driver)
+    │   │   ├───dashboard
+    │   │   │       page.tsx
+    │   │   │
+    │   │   ├───pools
+    │   │   │   └───[id]
+    │   │   │           page.tsx
+    │   │   │
+    │   │   └───vehicle
+    │   │           page.tsx
+    │   │
+    │   └───(passenger)
+    │       ├───request
+    │       │       page.tsx
+    │       │
+    │       ├───rides
+    │       │   │   page.tsx
+    │       │   │
+    │       │   └───[id]
+    │       │           page.tsx
+    │       │
+    │       └───wallet
+    │               page.tsx
+    │
+    ├───components
+    │   │   FareBreakdown.tsx
+    │   │   PoolPassengerList.tsx
+    │   │   RideRequestForm.tsx
+    │   │   RideStatusBadge.tsx
+    │   │
+    │   └───ui
+    │           paisa-amount.tsx
+    │           paisa-icon.tsx
+    │
+    ├───lib
+    │       api-client.ts
+    │       auth-context.tsx
+    │       format.ts
+    │       mock-data.ts
+    │
+    ├───public
+    │   └───icons
+    │           shapla-E8FF59.svg
+    │
+    └───types
+            api.ts
 ```
