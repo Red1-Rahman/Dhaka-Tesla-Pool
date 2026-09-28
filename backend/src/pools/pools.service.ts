@@ -113,10 +113,10 @@ export class PoolsService {
       });
 
       return {
-        pool_id: pool.id,
-        ride_request_id: updatedRide.id,
+        poolId: pool.id,
+        rideRequestId: updatedRide.id,
         status: updatedRide.status,
-        seats_taken: pool.rideRequests.length + 1,
+        seatsTaken: pool.rideRequests.length + 1,
         capacity: vehicle.capacity,
       };
     });
@@ -157,16 +157,16 @@ export class PoolsService {
   async findByIdForDriver(driverId: string, poolId: string) {
     const pool = await this.getOwnedPoolOrThrow(driverId, poolId);
     return {
-      pool_id: pool.id,
+      poolId: pool.id,
       status: pool.status,
       vehicle: { id: pool.vehicle.id, name: pool.vehicle.name, capacity: pool.vehicle.capacity },
       passengers: pool.rideRequests.map((r) => ({
-        ride_request_id: r.id,
-        passenger_id: r.passengerId,
-        pickup_zone: r.pickupZone,
-        dropoff_zone: r.dropoffZone,
-        seats_requested: r.seatsRequested,
-        fare_paisa: r.farePaisa,
+        rideRequestId: r.id,
+        passengerId: r.passengerId,
+        pickupZone: r.pickupZone,
+        dropoffZone: r.dropoffZone,
+        seatsRequested: r.seatsRequested,
+        farePaisa: r.farePaisa,
         status: r.status,
       })),
     };
@@ -206,7 +206,7 @@ export class PoolsService {
         });
       }
 
-      return { pool_id: poolId, status: toStatus, passenger_count: pool.rideRequests.length };
+      return { poolId, status: toStatus, passengerCount: pool.rideRequests.length };
     });
   }
 }
