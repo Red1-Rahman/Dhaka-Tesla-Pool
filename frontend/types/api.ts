@@ -27,11 +27,11 @@ export interface CastMember {
 }
 
 export interface FareBreakdownValue {
-  baseFare: number
-  distanceCharge: number
-  subtotal: number
-  discount: number
-  total: number
+  baseFarePaisa: number
+  distanceChargePaisa: number
+  subtotalPaisa: number
+  discountPaisa: number
+  totalPaisa: number
 }
 
 export interface PoolPassenger {
