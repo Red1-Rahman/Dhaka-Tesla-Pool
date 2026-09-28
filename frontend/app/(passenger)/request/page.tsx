@@ -10,10 +10,18 @@ export default function RequestRidePage() {
   if (isLoading) {
     return (
       <main className="min-h-screen">
-        <div className="mx-auto flex min-h-screen w-full max-w-[520px] items-center justify-center border-x border-[var(--hairline)] bg-[var(--canvas)] px-5 sm:px-7">
-          <p className="text-[13px] text-[var(--muted)]">
-            Loading...
-          </p>
+        <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col border-x border-[var(--hairline)] bg-[var(--canvas)] px-5 pb-5 sm:px-7">
+          <header className="flex h-[68px] shrink-0 items-center">
+            <span className="text-[14px] font-semibold tracking-[0.02em]">
+              Dhaka Tesla Pool
+            </span>
+          </header>
+
+          <section className="flex flex-1 items-center justify-center">
+            <p className="text-[13px] text-[var(--muted)]">
+              Loading...
+            </p>
+          </section>
         </div>
       </main>
     )
@@ -22,17 +30,25 @@ export default function RequestRidePage() {
   if (!currentUser) {
     return (
       <main className="min-h-screen">
-        <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col items-center justify-center gap-3 border-x border-[var(--hairline)] bg-[var(--canvas)] px-5 sm:px-7">
-          <p className="text-[13px] text-[var(--muted)]">
-            Please sign in to request a ride.
-          </p>
+        <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col border-x border-[var(--hairline)] bg-[var(--canvas)] px-5 pb-5 sm:px-7">
+          <header className="flex h-[68px] shrink-0 items-center">
+            <span className="text-[14px] font-semibold tracking-[0.02em]">
+              Dhaka Tesla Pool
+            </span>
+          </header>
 
-          <a
-            href="/signin"
-            className="text-[13px] font-medium text-[var(--primary)] underline-offset-4 hover:underline"
-          >
-            Sign in
-          </a>
+          <section className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+            <p className="text-[14px] text-[var(--muted)]">
+              Please sign in to request a ride.
+            </p>
+
+            <a
+              href="/signin"
+              className="text-[13px] font-medium text-[var(--primary)]"
+            >
+              Sign in
+            </a>
+          </section>
         </div>
       </main>
     )
