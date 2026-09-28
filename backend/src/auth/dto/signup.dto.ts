@@ -7,15 +7,15 @@ import { Role } from '@prisma/client';
 export class SignupDto {
   @IsString()
   @MinLength(2)
-  name: string;
+  name!: string;
 
   @IsPhoneNumber('BD')
-  phone: string;
+  phone!: string;
 
   @IsString()
   @MinLength(8)
-  password: string;
+  password!: string;
 
   @IsEnum(Role)
-  role: Role;
+  role!: Role;
 }
