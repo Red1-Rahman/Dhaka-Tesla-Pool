@@ -2,13 +2,10 @@
 
 import { useState } from "react"
 import {
-  Check,
-  ChevronRight,
   LogOut,
   Moon,
   Plus,
   Sun,
-  Users,
   X,
 } from "lucide-react"
 import {
@@ -16,7 +13,6 @@ import {
   motion,
   useReducedMotion,
 } from "motion/react"
-import { CAST } from "@/lib/mock-data"
 import { PaisaAmount } from "@/components/ui/paisa-amount"
 import { useAuth } from "@/lib/auth-context"
 
@@ -52,11 +48,41 @@ const TOP_UP_AMOUNTS_PAISA = [
 const WALLET_BALANCE_PAISA = 128_460
 
 export default function WalletPage() {
-  const { currentUser, signInAs, signOut } = useAuth()
+  const { currentUser, isLoading, signOut } = useAuth()
   const [isDark, setIsDark] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [accountsOpen, setAccountsOpen] = useState(false)
   const prefersReducedMotion = useReducedMotion()
+
+  if (isLoading) {
+    return (
+      <main className="min-h-screen">
+        <div className="mx-auto flex min-h-screen w-full max-w-[520px] items-center justify-center border-x border-[var(--hairline)] bg-[var(--canvas)] px-5 sm:px-7">
+          <p className="text-[13px] text-[var(--muted)]">
+            Loading...
+          </p>
+        </div>
+      </main>
+    )
+  }
+
+  if (!currentUser) {
+    return (
+      <main className="min-h-screen">
+        <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col items-center justify-center gap-3 border-x border-[var(--hairline)] bg-[var(--canvas)] px-5 sm:px-7">
+          <p className="text-[13px] text-[var(--muted)]">
+            Please sign in to view your wallet.
+          </p>
+
+          <a
+            href="/signin"
+            className="text-[13px] font-medium text-[var(--primary)] underline-offset-4 hover:underline"
+          >
+            Sign in
+          </a>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main
@@ -180,7 +206,7 @@ export default function WalletPage() {
                 </p>
 
                 <p className="mt-1 font-mono text-[12px] text-[var(--muted)]">
-                  +880 17•• ••4821
+                  {currentUser.phone}
                 </p>
               </div>
 
@@ -225,35 +251,6 @@ export default function WalletPage() {
                 </span>
               </button>
 
-              {/* This is a disclosure row, not a binary setting. */}
-              <button
-                onClick={() => setAccountsOpen(!accountsOpen)}
-                aria-expanded={accountsOpen}
-                className="flex w-full items-center justify-between py-4 text-left"
-              >
-                <span className="flex items-center gap-3 text-[13px]">
-                  <Users
-                    aria-hidden="true"
-                    size={17}
-                    strokeWidth={1.5}
-                  />
-                  Demo accounts
-                </span>
-
-                <span className="flex items-center gap-2 text-[12px] text-[var(--muted)]">
-                  {currentUser.name}
-
-                  <ChevronRight
-                    aria-hidden="true"
-                    size={15}
-                    strokeWidth={1.5}
-                    className={`transition-transform ${
-                      accountsOpen ? "rotate-90" : ""
-                    }`}
-                  />
-                </span>
-              </button>
-
               <button
                 onClick={signOut}
                 className="flex w-full items-center gap-3 py-4 text-left text-[13px] text-[var(--danger)]"
@@ -266,51 +263,6 @@ export default function WalletPage() {
                 Sign out
               </button>
             </div>
-
-            <AnimatePresence>
-              {accountsOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{
-                    duration: prefersReducedMotion ? 0 : 0.18,
-                  }}
-                  className="overflow-hidden"
-                >
-                  <div className="mb-2 flex flex-col gap-1 rounded-[8px] border border-[var(--hairline)] bg-[var(--surface)] p-1">
-                    {CAST.map((account) => (
-                      <button
-                        key={account.name}
-                        onClick={() => {
-                          signInAs(account.name)
-                          setAccountsOpen(false)
-                        }}
-                        className="flex items-center justify-between rounded-[6px] px-3 py-2 text-left text-[12px] hover:bg-[var(--surface-2)]"
-                      >
-                        <span>
-                          {account.name}{" "}
-                          <span className="text-[var(--muted)]">
-                            ·{" "}
-                            {account.role === "DRIVER"
-                              ? "Driver"
-                              : "Passenger"}
-                          </span>
-                        </span>
-
-                        {account.name === currentUser.name && (
-                          <Check
-                            aria-hidden="true"
-                            size={14}
-                            strokeWidth={1.5}
-                          />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </section>
         </section>
 
