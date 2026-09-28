@@ -5,10 +5,10 @@ import { IsIn, IsNotEmpty, IsNumberString, IsOptional, validateSync } from 'clas
 // here stops the process at boot instead of failing later inside a request.
 class EnvironmentVariables {
   @IsNotEmpty()
-  DATABASE_URL: string;
+  DATABASE_URL!: string;
 
   @IsNotEmpty()
-  JWT_SECRET: string;
+  JWT_SECRET!: string;
 
   @IsOptional()
   @IsNumberString()
