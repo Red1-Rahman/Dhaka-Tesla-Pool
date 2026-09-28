@@ -10,6 +10,18 @@ async function bootstrap(): Promise<void> {
   // under /api/v1 — nothing ever set this before, so routes mounted at root.
   app.setGlobalPrefix('api/v1');
 
+  // The browser app (:3000) calls this API (:3001), which is cross-origin.
+  // Without this, the browser blocks the preflight and fetch() throws before
+  // any response arrives. Auth uses a Bearer header, not cookies, so
+  // `credentials` is intentionally not enabled. CORS_ORIGIN accepts a
+  // comma-separated list for multiple origins.
+  const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  app.enableCors({ origin: allowedOrigins });
+
   // makes every class-validator decorator on every DTO active, strips fields
   // a DTO doesn't declare, and rejects unknown fields with 400 instead of
   // silently accepting them (audit #1 and the whitelist gap in #14).
