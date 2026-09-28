@@ -5,25 +5,25 @@ import { ZONE_NAMES } from '../../geo/zones.data';
 // PostgreSQL snake_case naming remains isolated to the Prisma @map(...) layer.
 export class CreateRideDto {
   @IsIn(ZONE_NAMES)
-  pickupZone: string;
+  pickupZone!: string;
 
   @IsIn(ZONE_NAMES)
-  dropoffZone: string;
+  dropoffZone!: string;
 
   @IsLatitude()
-  pickupLat: number;
+  pickupLat!: number;
 
   @IsLongitude()
-  pickupLng: number;
+  pickupLng!: number;
 
   @IsLatitude()
-  dropoffLat: number;
+  dropoffLat!: number;
 
   @IsLongitude()
-  dropoffLng: number;
+  dropoffLng!: number;
 
   @IsInt()
   @Min(1)
   @Max(3) // Bullet's capacity, see docs/database-schema.md
-  seatsRequested: number;
+  seatsRequested!: number;
 }
