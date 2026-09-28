@@ -1,45 +1,139 @@
 "use client"
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react"
-import { CAST } from "@/lib/mock-data"
-import type { CastMember } from "@/types/api"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react"
+import { apiClient, type UserResponse } from "@/lib/api-client"
+import type { Role } from "@/types/api"
 
 interface AuthContextValue {
-  currentUser: CastMember
+  currentUser: UserResponse | null
   isAuthenticated: boolean
-  signInAs: (name: string) => void
+  isLoading: boolean
+  signIn: (phone: string, password: string) => Promise<void>
+  signUp: (
+    name: string,
+    phone: string,
+    password: string,
+    role: Role,
+  ) => Promise<void>
   signOut: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-// prototype-only: holds which cast member is "signed in" so the demo-account
-// switcher (Auth screen, Wallet screen) has one shared source of truth
-// instead of separate local state per page.
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [signedIn, setSignedIn] = useState(false)
-  const [activeName, setActiveName] = useState<string>("Nusrat")
+export function AuthProvider({
+  children,
+}: {
+  children: ReactNode
+}) {
+  const [currentUser, setCurrentUser] =
+    useState<UserResponse | null>(null)
 
-  const value = useMemo<AuthContextValue>(() => {
-    const currentUser = CAST.find((member) => member.name === activeName) ?? CAST[1]
-    return {
-      currentUser,
-      isAuthenticated: signedIn,
-      signInAs: (name: string) => {
-        setActiveName(name)
-        setSignedIn(true)
-      },
-      signOut: () => setSignedIn(false),
+  const [isLoading, setIsLoading] = useState(true)
+
+  const loadSession = useCallback(async () => {
+    const token = apiClient.getToken()
+
+    if (!token) {
+      setIsLoading(false)
+      return
     }
-  }, [activeName, signedIn])
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    try {
+      const user = await apiClient.getMe()
+      setCurrentUser(user)
+    } catch {
+      apiClient.clearToken()
+      setCurrentUser(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadSession()
+  }, [loadSession])
+
+  const signIn = useCallback(
+    async (phone: string, password: string) => {
+      const response = await apiClient.signin({
+        phone,
+        password,
+      })
+
+      apiClient.storeToken(response.token)
+
+      const user = await apiClient.getMe()
+      setCurrentUser(user)
+    },
+    [],
+  )
+
+  const signUp = useCallback(
+    async (
+      name: string,
+      phone: string,
+      password: string,
+      role: Role,
+    ) => {
+      const response = await apiClient.signup({
+        name,
+        phone,
+        password,
+        role,
+      })
+
+      apiClient.storeToken(response.token)
+
+      const user = await apiClient.getMe()
+      setCurrentUser(user)
+    },
+    [],
+  )
+
+  const signOut = useCallback(() => {
+    apiClient.clearToken()
+    setCurrentUser(null)
+  }, [])
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      currentUser,
+      isAuthenticated: currentUser !== null,
+      isLoading,
+      signIn,
+      signUp,
+      signOut,
+    }),
+    [
+      currentUser,
+      isLoading,
+      signIn,
+      signUp,
+      signOut,
+    ],
+  )
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext)
+
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider")
   }
+
   return context
 }
