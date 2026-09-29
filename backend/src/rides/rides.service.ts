@@ -26,7 +26,9 @@ export class RidesService {
 
   async create(passengerId: string, dto: CreateRideDto) {
     if (dto.pickupZone === dto.dropoffZone) {
-      throw new BadRequestException('Pickup and destination must be different zones');
+      throw new BadRequestException(
+        'Pickup and destination must be different zones',
+      );
     }
 
     // Coordinates come from the server's zone table, never from the client.
@@ -41,7 +43,10 @@ export class RidesService {
     // Not pooled at creation time, a fare is quoted solo and only
     // recalculated as pooled once PoolsService actually matches this
     // request with another rider.
-    const farePaisa = this.fareService.calculateFare(distanceKm, false);
+    const farePaisa = this.fareService.calculateFare(
+      distanceKm,
+      false,
+    );
 
     const ride = await this.prisma.rideRequest.create({
       data: {
@@ -69,11 +74,18 @@ export class RidesService {
     return this.toResponse(ride);
   }
 
-  async findOwnRideById(passengerId: string, rideId: string) {
+  async findOwnRideById(
+    passengerId: string,
+    rideId: string,
+  ) {
     const ride = await this.findByIdOrThrow(rideId);
+
     if (ride.passengerId !== passengerId) {
-      throw new ForbiddenException("You cannot view another passenger's ride");
+      throw new ForbiddenException(
+        "You cannot view another passenger's ride",
+      );
     }
+
     return this.toResponse(ride);
   }
 
@@ -86,14 +98,17 @@ export class RidesService {
     return rides.map((ride) => this.toResponse(ride));
   }
 
-  // Deliberately simple: every unmatched REQUESTED ride, not filtered by
-  // driver location, since drivers have no tracked live location in this
-  // MVP, only a vehicle and an online/offline flag. Zone-based filtering
-  // happens at accept() time instead (PoolsService), where it actually
-  // has a vehicle and an existing pool to compare against.
+  // Deliberately simple for the one-driver MVP: every unmatched
+  // REQUESTED ride is visible to the driver. Actual pickup/dropoff
+  // compatibility and vehicle capacity are enforced atomically by
+  // PoolsService.accept(), where the driver's vehicle and current
+  // pool are available.
   async findAvailableForDrivers() {
     const rides = await this.prisma.rideRequest.findMany({
-      where: { status: 'REQUESTED', poolId: null },
+      where: {
+        status: 'REQUESTED',
+        poolId: null,
+      },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -107,11 +122,17 @@ export class RidesService {
     }));
   }
 
-  async cancel(passengerId: string, rideId: string, dto: CancelRideDto) {
+  async cancel(
+    passengerId: string,
+    rideId: string,
+    dto: CancelRideDto,
+  ) {
     const ride = await this.findByIdOrThrow(rideId);
 
     if (ride.passengerId !== passengerId) {
-      throw new ForbiddenException("You cannot cancel another passenger's ride");
+      throw new ForbiddenException(
+        "You cannot cancel another passenger's ride",
+      );
     }
 
     // Now that pooling exists, MATCHED rides can also be cancelled, per
@@ -141,7 +162,9 @@ export class RidesService {
     });
 
     if (!ride) {
-      throw new NotFoundException('Ride request not found');
+      throw new NotFoundException(
+        'Ride request not found',
+      );
     }
 
     return ride;
