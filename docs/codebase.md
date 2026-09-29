@@ -128,7 +128,7 @@ dhaka-tesla-pool/
     ├───app
     │   │   globals.css
     │   │   layout.tsx                      # Defines application layout
-    │   │   page.tsx                        # Renders landing page
+    │   │   page.tsx                        # Redirects by auth state and role
     │   │
     │   ├───(auth)
     │   │   ├───signin
@@ -164,12 +164,14 @@ dhaka-tesla-pool/
     ├───components
     │   │   FareBreakdown.tsx               # Displays fare breakdown
     │   │   PoolPassengerList.tsx            # Displays pool passengers
+    │   │   RickshawSilhouette.tsx           # Draws rickshaw with seat occupancy
     │   │   RideRequestForm.tsx               # Handles ride requests
     │   │   RideStatusBadge.tsx               # Displays ride status
     │   │
     │   └───ui
     │           paisa-amount.tsx              # Displays paisa amounts
     │           paisa-icon.tsx                # Displays Shapla currency icon
+    │           rickshaw-icon.tsx             # Displays electric rickshaw icon
     │
     ├───lib
     │       api-client.ts                    # Handles backend API requests
