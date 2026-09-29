@@ -63,6 +63,7 @@ export class PoolsService {
         rideRequests: {
           id: string;
           pickupZone: string;
+          dropoffZone: string;
           seatsRequested: number;
           pickupLat: number;
           pickupLng: number;
@@ -92,6 +93,7 @@ export class PoolsService {
               select: {
                 id: true,
                 pickupZone: true,
+                dropoffZone: true,
                 seatsRequested: true,
                 pickupLat: true,
                 pickupLng: true,
@@ -102,16 +104,29 @@ export class PoolsService {
           },
         });
 
-        const compatible = pool.rideRequests.every((member) =>
+        const pickupCompatible = pool.rideRequests.every((member) =>
           this.geoService.pickupZonesCompatible(
             member.pickupZone,
             ride.pickupZone,
           ),
         );
 
-        if (!compatible) {
+        if (!pickupCompatible) {
           throw new ConflictException(
-            "This ride is not compatible with the vehicle's current pool route",
+            "This ride is not compatible with the vehicle's current pool pickup route",
+          );
+        }
+
+        const dropoffCompatible = pool.rideRequests.every((member) =>
+          this.geoService.dropoffZonesCompatible(
+            member.dropoffZone,
+            ride.dropoffZone,
+          ),
+        );
+
+        if (!dropoffCompatible) {
+          throw new ConflictException(
+            "This ride is not compatible with the vehicle's current pool dropoff route",
           );
         }
 
@@ -261,9 +276,8 @@ export class PoolsService {
     );
 
     // One charge per active member, per docs/database-schema.md.
-    // Method defaults to cash for the MVP, routed through
-    // PaymentsService so a real gateway later only requires changing
-    // that one class.
+    // Method defaults to cash for the MVP, routed through PaymentsService
+    // so a real gateway later only requires changing that one class.
     for (const ride of activeRides) {
       await this.paymentsService.charge({
         rideRequestId: ride.id,
