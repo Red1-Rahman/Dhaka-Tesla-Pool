@@ -4,10 +4,14 @@ These conventions exist so the implementation never drifts from the docs. If a r
 
 ## Branching
 
-- `master`, always deployable, only receives merges from `pre-release`.
-- `pre-release`, integration branch, feature branches merge here first.
-- `release/vX.Y.Z`, cut from `pre-release` once a version is ready to ship.
-- `feature/<short-name>`, one feature per branch, examples: `feature/passenger-auth`, `feature/tesla-pooling`, `feature/driver-flow`.
+- `master`: integrated, working code. Feature branches merge here (with `--no-ff`) once the feature works.
+- `feature/<short-name>`: one logical feature per branch, cut from `master`. Examples: `feature/passenger-auth`, `feature/tesla-pooling`, `feature/driver-flow`.
+- `pre-release`: cut from `master` once all MVP features are integrated. Only integration fixes, docs, and deployment checks land here. No new features.
+- `release/vX.Y.Z`: cut from `pre-release` when it is ready to ship (e.g. `release/v1.0.0`). This is the version shown in the video and deployment. Tag it `vX.Y.Z`.
+
+Flow: feature branch (incremental commits) → merge to `master` when it works → cut `pre-release` when MVP is integrated → fix and document there → cut `release/v1.0.0`.
+
+After release, merge `pre-release` fixes back into `master` so the two don't drift.
 
 ## Commit messages
 
@@ -45,6 +49,14 @@ One commit equals one understandable logical change. Avoid vague messages (`upda
 - Prefer explicit return types on service functions, it doubles as documentation when reading the file.
 - Status transition checks always go through `common/status-machine.ts`, never a hand-written `if (status === 'X')` chain duplicated elsewhere.
 
+## API casing
+
+- HTTP request and response JSON uses `camelCase`.
+- TypeScript DTOs, interfaces, variables, and service-level objects use `camelCase`.
+- PostgreSQL column names use `snake_case`.
+- Prisma `@map(...)` is the boundary between application field names and database column names.
+- The frontend API client does not perform casing conversion; frontend types match the backend HTTP contract directly.
+
 ## Testing conventions
 
 - One test file per service (`rides.service.spec.ts`), integration tests for endpoints that touch the database or concurrency (`pools.e2e-spec.ts`).
@@ -53,4 +65,4 @@ One commit equals one understandable logical change. Avoid vague messages (`upda
 
 ## Documentation sync rule
 
-Any change to the state machine, fare formula, matching rule, or an API endpoint's request/response shape must be reflected in the matching file under `docs/` in the same pull request. A doc that lags the code is worse than no doc, since it actively misleads whoever reads it next, including you in the interview.
+Any change to the state machine, fare formula, matching rule, or an API endpoint's request/response shape must be reflected in the matching file under `docs/` in the same pull request.

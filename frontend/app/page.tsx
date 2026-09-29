@@ -4,10 +4,19 @@ import { redirect } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 
 export default function RootPage() {
-  const { isAuthenticated, currentUser } = useAuth()
+  const { isAuthenticated, isLoading, currentUser } = useAuth()
 
-  if (!isAuthenticated) {
+  if (isLoading) {
+    return null
+  }
+
+  if (!isAuthenticated || !currentUser) {
     redirect("/signin")
   }
-  redirect(currentUser.role === "DRIVER" ? "/dashboard" : "/request")
+
+  redirect(
+    currentUser.role === "DRIVER"
+      ? "/dashboard"
+      : "/request",
+  )
 }

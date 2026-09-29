@@ -24,7 +24,7 @@ export class VehiclesService {
       id: updated.id,
       name: updated.name,
       capacity: updated.capacity,
-      is_online: updated.isOnline,
+      isOnline: updated.isOnline,
     };
   }
 
@@ -37,7 +37,7 @@ export class VehiclesService {
       id: vehicle.id,
       name: vehicle.name,
       capacity: vehicle.capacity,
-      is_online: vehicle.isOnline,
+      isOnline: vehicle.isOnline,
     };
   }
 }

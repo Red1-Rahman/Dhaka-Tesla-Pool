@@ -1,30 +1,20 @@
-import { IsIn, IsLatitude, IsLongitude, IsInt, Min, Max } from 'class-validator';
+import { IsIn, IsInt, Max, Min } from 'class-validator';
 import { ZONE_NAMES } from '../../geo/zones.data';
+import { MAX_SEATS_PER_REQUEST } from '../rides.constants';
 
-// Field names match docs/api-contracts.md's request body exactly
-// (snake_case), so the wire format needs no transform layer between
-// the documented contract and what the controller receives.
+// HTTP-facing field names use camelCase.
+// Coordinates are not accepted from the client: the server derives them
+// from the zone names (see RidesService.create), so fare and matching can
+// never be computed from coordinates that disagree with the zone.
 export class CreateRideDto {
   @IsIn(ZONE_NAMES)
-  pickup_zone: string;
+  pickupZone!: string;
 
   @IsIn(ZONE_NAMES)
-  dropoff_zone: string;
-
-  @IsLatitude()
-  pickup_lat: number;
-
-  @IsLongitude()
-  pickup_lng: number;
-
-  @IsLatitude()
-  dropoff_lat: number;
-
-  @IsLongitude()
-  dropoff_lng: number;
+  dropoffZone!: string;
 
   @IsInt()
   @Min(1)
-  @Max(3) // Bullet's capacity, see docs/database-schema.md
-  seats_requested: number;
+  @Max(MAX_SEATS_PER_REQUEST)
+  seatsRequested!: number;
 }

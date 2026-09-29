@@ -12,38 +12,61 @@ export const ZONES: Zone[] = [
   "Bashundhara",
 ]
 
-// distance from Banani in km, used for the Home/request-screen live estimate.
-// Gulshan is 2.8 (not 3.1) to match Rafiq's canonical fare below — this was
-// the exact drift that made the Home screen quote a different price than
-// every other screen for the same trip.
-export const DISTANCE_FROM_BANANI_KM: Record<Exclude<Zone, "Banani">, number> = {
-  Gulshan: 2.8,
-  Mohakhali: 4.2,
-  Dhanmondi: 7.8,
-  Mirpur: 11.4,
-  Uttara: 14.6,
-  Farmgate: 5.9,
-  Bashundhara: 8.7,
+// Approximate straight-line distance in km between every zone pair, mirrors
+// backend/src/geo/geo.service.ts's haversine distance over
+// backend/src/geo/zones.data.ts's centroids, kept as a static lookup here
+// since the frontend has no live geo service to call yet. Symmetric by
+// construction: distanceKm(a, b) === distanceKm(b, a).
+const ZONE_DISTANCES_KM: Record<Zone, Partial<Record<Zone, number>>> = {
+  Banani: { Gulshan: 2.8, Mohakhali: 4.2, Dhanmondi: 7.8, Mirpur: 11.4, Uttara: 14.6, Farmgate: 5.9, Bashundhara: 8.7 },
+  Gulshan: { Mohakhali: 3.9, Dhanmondi: 9.1, Mirpur: 12.8, Uttara: 15.9, Farmgate: 7.2, Bashundhara: 3.4 },
+  Mohakhali: { Dhanmondi: 6.5, Mirpur: 9.8, Uttara: 12.7, Farmgate: 3.1, Bashundhara: 7.6 },
+  Dhanmondi: { Mirpur: 6.9, Uttara: 15.3, Farmgate: 3.6, Bashundhara: 13.2 },
+  Mirpur: { Uttara: 8.8, Farmgate: 8.1, Bashundhara: 15.6 },
+  Uttara: { Farmgate: 12.4, Bashundhara: 13.9 },
+  Farmgate: { Bashundhara: 10.8 },
+  Bashundhara: {},
 }
 
-// docs/specs.md fare.constants.ts, mirrored here so the frontend can never
-// drift from the backend's actual formula.
+// Looks up either direction, this is the function RideRequestForm should
+// call for pickup → dropoff, regardless of which zone is which.
+export function distanceKmBetween(a: Zone, b: Zone): number {
+  if (a === b) return 0
+  return ZONE_DISTANCES_KM[a]?.[b] ?? ZONE_DISTANCES_KM[b]?.[a] ?? 0
+}
+
+// Kept for any existing caller that specifically wants "distance from
+// Banani", now derived from the full matrix so it can never drift from it.
+export const DISTANCE_FROM_BANANI_KM: Record<Exclude<Zone, "Banani">, number> = {
+  Gulshan: distanceKmBetween("Banani", "Gulshan"),
+  Mohakhali: distanceKmBetween("Banani", "Mohakhali"),
+  Dhanmondi: distanceKmBetween("Banani", "Dhanmondi"),
+  Mirpur: distanceKmBetween("Banani", "Mirpur"),
+  Uttara: distanceKmBetween("Banani", "Uttara"),
+  Farmgate: distanceKmBetween("Banani", "Farmgate"),
+  Bashundhara: distanceKmBetween("Banani", "Bashundhara"),
+}
+
+// Monetary values are represented in paisa throughout the application.
+// 30 taka = 3000 paisa, 15 taka = 1500 paisa.
 export const FARE = {
-  baseFareTaka: 30,
-  perKmRateTaka: 15,
+  baseFarePaisa: 3000,
+  perKmRatePaisa: 1500,
   poolDiscountPct: 0.2,
 } as const
 
 // passengerFare = baseFare + (distanceKm * perKmRate) - poolDiscount
 export function calculateFare(distanceKm: number, pooled: boolean) {
-  const subtotal = FARE.baseFareTaka + distanceKm * FARE.perKmRateTaka
-  const discount = pooled ? subtotal * FARE.poolDiscountPct : 0
+  const distanceCharge = Math.round(distanceKm * FARE.perKmRatePaisa)
+  const subtotal = FARE.baseFarePaisa + distanceCharge
+  const discount = pooled ? Math.round(subtotal * FARE.poolDiscountPct) : 0
+
   return {
-    baseFare: FARE.baseFareTaka,
-    distanceCharge: distanceKm * FARE.perKmRateTaka,
-    subtotal,
-    discount,
-    total: subtotal - discount,
+    baseFarePaisa: FARE.baseFarePaisa,
+    distanceChargePaisa: distanceCharge,
+    subtotalPaisa: subtotal,
+    discountPaisa: discount,
+    totalPaisa: subtotal - discount,
   }
 }
 
@@ -64,10 +87,7 @@ export const VEHICLE = {
   capacity: 3,
 }
 
-// the canonical worked example from docs/specs.md — Nusrat and Rafiq share
-// a pickup zone and diverge only at dropoff, which is the entire point of
-// the matching-rule demo. Never render them going to the same destination
-// or give them the same fare.
+// the canonical worked example from docs/specs.md
 export const CANONICAL_POOL = [
   {
     initials: "NR",
@@ -85,11 +105,11 @@ export const CANONICAL_POOL = [
     distanceKm: 2.8,
     seats: 1,
   },
-].map((passenger) => ({ ...passenger, fare: calculateFare(passenger.distanceKm, true) }))
+].map((passenger) => ({
+  ...passenger,
+  fare: calculateFare(passenger.distanceKm, true),
+}))
 
-// third seat for the "pool full" demo state — Shirin is exactly who the
-// brief invented for this: the last-seat concurrency story, not a driver
-// dashboard filler name.
 export const THIRD_SEAT_PASSENGER = {
   initials: "SH",
   name: "Shirin",

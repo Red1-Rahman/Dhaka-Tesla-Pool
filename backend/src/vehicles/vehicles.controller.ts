@@ -20,6 +20,6 @@ export class VehiclesController {
 
   @Patch('me/online')
   setOnline(@Req() req: { user: { userId: string } }, @Body() dto: SetOnlineDto) {
-    return this.vehiclesService.setOnline(req.user.userId, dto.is_online);
+    return this.vehiclesService.setOnline(req.user.userId, dto.isOnline);
   }
 }
