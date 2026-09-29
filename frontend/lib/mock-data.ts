@@ -12,18 +12,39 @@ export const ZONES: Zone[] = [
   "Bashundhara",
 ]
 
-// distance from Banani in km, used for the Home/request-screen live estimate.
-export const DISTANCE_FROM_BANANI_KM: Record<
-  Exclude<Zone, "Banani">,
-  number
-> = {
-  Gulshan: 2.8,
-  Mohakhali: 4.2,
-  Dhanmondi: 7.8,
-  Mirpur: 11.4,
-  Uttara: 14.6,
-  Farmgate: 5.9,
-  Bashundhara: 8.7,
+// Approximate straight-line distance in km between every zone pair, mirrors
+// backend/src/geo/geo.service.ts's haversine distance over
+// backend/src/geo/zones.data.ts's centroids, kept as a static lookup here
+// since the frontend has no live geo service to call yet. Symmetric by
+// construction: distanceKm(a, b) === distanceKm(b, a).
+const ZONE_DISTANCES_KM: Record<Zone, Partial<Record<Zone, number>>> = {
+  Banani: { Gulshan: 2.8, Mohakhali: 4.2, Dhanmondi: 7.8, Mirpur: 11.4, Uttara: 14.6, Farmgate: 5.9, Bashundhara: 8.7 },
+  Gulshan: { Mohakhali: 3.9, Dhanmondi: 9.1, Mirpur: 12.8, Uttara: 15.9, Farmgate: 7.2, Bashundhara: 3.4 },
+  Mohakhali: { Dhanmondi: 6.5, Mirpur: 9.8, Uttara: 12.7, Farmgate: 3.1, Bashundhara: 7.6 },
+  Dhanmondi: { Mirpur: 6.9, Uttara: 15.3, Farmgate: 3.6, Bashundhara: 13.2 },
+  Mirpur: { Uttara: 8.8, Farmgate: 8.1, Bashundhara: 15.6 },
+  Uttara: { Farmgate: 12.4, Bashundhara: 13.9 },
+  Farmgate: { Bashundhara: 10.8 },
+  Bashundhara: {},
+}
+
+// Looks up either direction, this is the function RideRequestForm should
+// call for pickup → dropoff, regardless of which zone is which.
+export function distanceKmBetween(a: Zone, b: Zone): number {
+  if (a === b) return 0
+  return ZONE_DISTANCES_KM[a]?.[b] ?? ZONE_DISTANCES_KM[b]?.[a] ?? 0
+}
+
+// Kept for any existing caller that specifically wants "distance from
+// Banani", now derived from the full matrix so it can never drift from it.
+export const DISTANCE_FROM_BANANI_KM: Record<Exclude<Zone, "Banani">, number> = {
+  Gulshan: distanceKmBetween("Banani", "Gulshan"),
+  Mohakhali: distanceKmBetween("Banani", "Mohakhali"),
+  Dhanmondi: distanceKmBetween("Banani", "Dhanmondi"),
+  Mirpur: distanceKmBetween("Banani", "Mirpur"),
+  Uttara: distanceKmBetween("Banani", "Uttara"),
+  Farmgate: distanceKmBetween("Banani", "Farmgate"),
+  Bashundhara: distanceKmBetween("Banani", "Bashundhara"),
 }
 
 // Monetary values are represented in paisa throughout the application.
@@ -36,13 +57,9 @@ export const FARE = {
 
 // passengerFare = baseFare + (distanceKm * perKmRate) - poolDiscount
 export function calculateFare(distanceKm: number, pooled: boolean) {
-  const distanceCharge = Math.round(
-    distanceKm * FARE.perKmRatePaisa,
-  )
+  const distanceCharge = Math.round(distanceKm * FARE.perKmRatePaisa)
   const subtotal = FARE.baseFarePaisa + distanceCharge
-  const discount = pooled
-    ? Math.round(subtotal * FARE.poolDiscountPct)
-    : 0
+  const discount = pooled ? Math.round(subtotal * FARE.poolDiscountPct) : 0
 
   return {
     baseFarePaisa: FARE.baseFarePaisa,
