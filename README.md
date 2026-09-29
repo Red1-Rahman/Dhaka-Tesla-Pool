@@ -27,3 +27,13 @@ Then run:
 ./console/backend.sh
 ./console/frontend.sh
 ```
+
+## App Preview
+
+### Driver - Accepting Rides
+
+The driver can switch their vehicle status from **Offline** to **Online — Accepting Rides**.
+
+![Driver switching from offline to online — accepting rides](assets/accepting-rides.gif)
+
+More screenshots and GIFs demonstrating the application's features will be added here.
