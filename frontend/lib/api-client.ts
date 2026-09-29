@@ -11,20 +11,14 @@ import type {
 } from "@/types/api"
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1"
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:3001/api/v1"
 
 export interface AuthResponse {
   id: string
   name: string
   role: Role
   token: string
-}
-
-export interface UserResponse {
-  id: string
-  name: string
-  phone: string
-  role: Role
 }
 
 export class ApiError extends Error {
@@ -44,7 +38,8 @@ function toErrorMessage(
 ): string {
   if (Array.isArray(rawMessage)) {
     const messages = rawMessage.filter(
-      (message): message is string => typeof message === "string",
+      (message): message is string =>
+        typeof message === "string",
     )
 
     if (messages.length > 0) {
@@ -190,6 +185,7 @@ export const apiClient = {
   getMe: () =>
     request<UserResponse>("/users/me"),
 
+  // Passenger rides
   createRide: (input: CreateRideInput) =>
     request<RideRequestResponse>("/rides", {
       method: "POST",
@@ -206,6 +202,59 @@ export const apiClient = {
     request<RideRequestResponse>(`/rides/${id}/cancel`, {
       method: "PATCH",
     }),
+
+  // Driver vehicle
+  getVehicle: () =>
+    request<VehicleResponse>("/vehicles/me"),
+
+  setVehicleOnline: (isOnline: boolean) =>
+    request<VehicleResponse>("/vehicles/me/online", {
+      method: "PATCH",
+      body: JSON.stringify({ isOnline }),
+    }),
+
+  // Driver ride requests
+  getAvailableRides: () =>
+    request<AvailableRideResponse[]>("/rides/available"),
+
+  // Driver pool lifecycle
+  acceptRide: (rideRequestId: string) =>
+    request<AcceptRideResponse>(
+      `/pools/${rideRequestId}/accept`,
+      {
+        method: "POST",
+      },
+    ),
+
+  getActivePool: () =>
+    request<PoolResponse | null>("/pools/me/active"),
+
+  getPool: (poolId: string) =>
+    request<PoolResponse>(`/pools/${poolId}`),
+
+  markDriverArrived: (poolId: string) =>
+    request<PoolTransitionResponse>(
+      `/pools/${poolId}/driver-arrived`,
+      {
+        method: "PATCH",
+      },
+    ),
+
+  startPool: (poolId: string) =>
+    request<PoolTransitionResponse>(
+      `/pools/${poolId}/start`,
+      {
+        method: "PATCH",
+      },
+    ),
+
+  completePool: (poolId: string) =>
+    request<PoolTransitionResponse>(
+      `/pools/${poolId}/complete`,
+      {
+        method: "PATCH",
+      },
+    ),
 
   storeToken: setStoredToken,
 
