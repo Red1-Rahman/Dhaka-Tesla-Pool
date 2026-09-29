@@ -468,7 +468,7 @@ describe('PoolsService', () => {
         poolId: 'pool-1',
         rideRequestId: 'ride-new',
         status: 'MATCHED',
-        seatsTaken: 2,
+        seatsTaken: 3,
         capacity: 3,
       });
 

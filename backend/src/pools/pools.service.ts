@@ -3,12 +3,12 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
-import { GeoService } from '../geo/geo.service';
-import { FareService } from '../fare/fare.service';
-import { PaymentsService } from '../payments/payments.service';
-import { assertTransition } from '../common/status-machine';
+} from '@nestjs/common'
+import { PrismaService } from '../common/prisma.service'
+import { GeoService } from '../geo/geo.service'
+import { FareService } from '../fare/fare.service'
+import { PaymentsService } from '../payments/payments.service'
+import { assertTransition } from '../common/status-machine'
 
 // Driver-side pooling logic: accepting a ride into a pool, advancing the
 // pool through its lifecycle, and enforcing that a vehicle never carries
@@ -26,25 +26,29 @@ export class PoolsService {
   async accept(driverId: string, rideRequestId: string) {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { driverId },
-    });
+    })
 
     if (!vehicle) {
-      throw new NotFoundException('You do not have a registered vehicle');
+      throw new NotFoundException(
+        'You do not have a registered vehicle',
+      )
     }
 
     if (!vehicle.isOnline) {
-      throw new ConflictException('Go online before accepting rides');
+      throw new ConflictException(
+        'Go online before accepting rides',
+      )
     }
 
     const ride = await this.prisma.rideRequest.findUnique({
       where: { id: rideRequestId },
-    });
+    })
 
     if (!ride) {
-      throw new NotFoundException('Ride request not found');
+      throw new NotFoundException('Ride request not found')
     }
 
-    assertTransition(ride.status, 'MATCHED');
+    assertTransition(ride.status, 'MATCHED')
 
     return this.prisma.$transaction(async (tx) => {
       // A vehicle carries at most one open pool at a time. Find its id
@@ -56,21 +60,21 @@ export class PoolsService {
           status: 'MATCHED',
         },
         select: { id: true },
-      });
+      })
 
       let pool: {
-        id: string;
+        id: string
         rideRequests: {
-          id: string;
-          pickupZone: string;
-          dropoffZone: string;
-          seatsRequested: number;
-          pickupLat: number;
-          pickupLng: number;
-          dropoffLat: number;
-          dropoffLng: number;
-        }[];
-      };
+          id: string
+          pickupZone: string
+          dropoffZone: string
+          seatsRequested: number
+          pickupLat: number
+          pickupLng: number
+          dropoffLat: number
+          dropoffLng: number
+        }[]
+      }
 
       if (existingPool) {
         // Lock the pool row so concurrent accepts for the same vehicle
@@ -80,7 +84,7 @@ export class PoolsService {
           FROM "pools"
           WHERE id = ${existingPool.id}
           FOR UPDATE
-        `;
+        `
 
         // Re-read membership after acquiring the lock. This ensures
         // capacity and compatibility checks see memberships committed
@@ -102,43 +106,48 @@ export class PoolsService {
               },
             },
           },
-        });
+        })
 
-        const pickupCompatible = pool.rideRequests.every((member) =>
-          this.geoService.pickupZonesCompatible(
-            member.pickupZone,
-            ride.pickupZone,
-          ),
-        );
+        const pickupCompatible = pool.rideRequests.every(
+          (member) =>
+            this.geoService.pickupZonesCompatible(
+              member.pickupZone,
+              ride.pickupZone,
+            ),
+        )
 
         if (!pickupCompatible) {
           throw new ConflictException(
             "This ride is not compatible with the vehicle's current pool pickup route",
-          );
+          )
         }
 
-        const dropoffCompatible = pool.rideRequests.every((member) =>
-          this.geoService.dropoffZonesCompatible(
-            member.dropoffZone,
-            ride.dropoffZone,
-          ),
-        );
+        const dropoffCompatible = pool.rideRequests.every(
+          (member) =>
+            this.geoService.dropoffZonesCompatible(
+              member.dropoffZone,
+              ride.dropoffZone,
+            ),
+        )
 
         if (!dropoffCompatible) {
           throw new ConflictException(
             "This ride is not compatible with the vehicle's current pool dropoff route",
-          );
+          )
         }
 
         const seatsTaken = pool.rideRequests.reduce(
           (sum, member) => sum + member.seatsRequested,
           0,
-        );
+        )
 
-        if (seatsTaken + ride.seatsRequested > vehicle.capacity) {
+        if (
+          seatsTaken + ride.seatsRequested >
+          vehicle.capacity
+        ) {
           throw new ConflictException(
             'Vehicle capacity would be exceeded',
-          );
+          )
         }
       } else {
         // No pool exists yet for this vehicle, so this insert is the
@@ -149,25 +158,31 @@ export class PoolsService {
             status: 'MATCHED',
           },
           select: { id: true },
-        });
+        })
 
         pool = {
           id: created.id,
           rideRequests: [],
-        };
+        }
       }
 
-      const isPooled = pool.rideRequests.length > 0;
+      const isPooled = pool.rideRequests.length > 0
 
       const distanceKm = this.geoService.distanceKm(
-        { lat: ride.pickupLat, lng: ride.pickupLng },
-        { lat: ride.dropoffLat, lng: ride.dropoffLng },
-      );
+        {
+          lat: ride.pickupLat,
+          lng: ride.pickupLng,
+        },
+        {
+          lat: ride.dropoffLat,
+          lng: ride.dropoffLng,
+        },
+      )
 
       const farePaisa = this.fareService.calculateFare(
         distanceKm,
         isPooled,
-      );
+      )
 
       const updatedRide = await tx.rideRequest.update({
         where: { id: ride.id },
@@ -176,7 +191,7 @@ export class PoolsService {
           poolId: pool.id,
           farePaisa,
         },
-      });
+      })
 
       await tx.poolMembership.create({
         data: {
@@ -184,29 +199,37 @@ export class PoolsService {
           rideRequestId: ride.id,
           seatIndex: pool.rideRequests.length,
         },
-      });
+      })
 
       // If this ride joined an existing pool, all existing members
       // are now pooled rides as well. Recalculate each member's fare
       // using that member's own route and the pooled fare model.
       if (isPooled) {
         for (const member of pool.rideRequests) {
-          const memberDistanceKm = this.geoService.distanceKm(
-            { lat: member.pickupLat, lng: member.pickupLng },
-            { lat: member.dropoffLat, lng: member.dropoffLng },
-          );
+          const memberDistanceKm =
+            this.geoService.distanceKm(
+              {
+                lat: member.pickupLat,
+                lng: member.pickupLng,
+              },
+              {
+                lat: member.dropoffLat,
+                lng: member.dropoffLng,
+              },
+            )
 
-          const memberFarePaisa = this.fareService.calculateFare(
-            memberDistanceKm,
-            true,
-          );
+          const memberFarePaisa =
+            this.fareService.calculateFare(
+              memberDistanceKm,
+              true,
+            )
 
           await tx.rideRequest.update({
             where: { id: member.id },
             data: {
               farePaisa: memberFarePaisa,
             },
-          });
+          })
         }
       }
 
@@ -216,36 +239,47 @@ export class PoolsService {
           fromStatus: 'REQUESTED',
           toStatus: 'MATCHED',
         },
-      });
+      })
+
+      // Report occupied seats rather than passenger count.
+      const seatsTaken =
+        pool.rideRequests.reduce(
+          (sum, member) =>
+            sum + member.seatsRequested,
+          0,
+        ) + ride.seatsRequested
 
       return {
         poolId: pool.id,
         rideRequestId: updatedRide.id,
         status: updatedRide.status,
-        seatsTaken: pool.rideRequests.length + 1,
+        seatsTaken,
         capacity: vehicle.capacity,
-      };
-    });
+      }
+    })
   }
 
-  async markDriverArrived(driverId: string, poolId: string) {
+  async markDriverArrived(
+    driverId: string,
+    poolId: string,
+  ) {
     return this.transitionPool(
       driverId,
       poolId,
       'DRIVER_ARRIVED',
-    );
+    )
   }
 
   async start(driverId: string, poolId: string) {
     const pool = await this.getOwnedPoolOrThrow(
       driverId,
       poolId,
-    );
+    )
 
     if (pool.rideRequests.length === 0) {
       throw new ConflictException(
         'Cannot start a pool with no passengers',
-      );
+      )
     }
 
     return this.transitionPool(
@@ -253,47 +287,75 @@ export class PoolsService {
       poolId,
       'STARTED',
       { startedAt: new Date() },
-    );
+    )
   }
 
   async complete(driverId: string, poolId: string) {
     const pool = await this.getOwnedPoolOrThrow(
       driverId,
       poolId,
-    );
+    )
 
     const result = await this.transitionPool(
       driverId,
       poolId,
       'COMPLETED',
       { completedAt: new Date() },
-    );
+    )
 
     // Cancelled members remain associated with the pool for history,
     // but they must not be charged.
     const activeRides = pool.rideRequests.filter(
       (ride) => ride.status !== 'CANCELLED',
-    );
+    )
 
     // One charge per active member, per docs/database-schema.md.
-    // Method defaults to cash for the MVP, routed through PaymentsService
-    // so a real gateway later only requires changing that one class.
+    // Method defaults to cash for the MVP, routed through
+    // PaymentsService so a real gateway later only requires
+    // changing that one class.
     for (const ride of activeRides) {
       await this.paymentsService.charge({
         rideRequestId: ride.id,
         amountPaisa: ride.farePaisa,
         method: 'cash',
-      });
+      })
     }
 
-    return result;
+    return result
   }
 
-  async findByIdForDriver(driverId: string, poolId: string) {
-    const pool = await this.getOwnedPoolOrThrow(
-      driverId,
-      poolId,
-    );
+  async findActiveForDriver(driverId: string) {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { driverId },
+      select: { id: true },
+    })
+
+    if (!vehicle) {
+      throw new NotFoundException(
+        'You do not have a registered vehicle',
+      )
+    }
+
+    const pool = await this.prisma.pool.findFirst({
+      where: {
+        vehicleId: vehicle.id,
+        status: {
+          in: [
+            'MATCHED',
+            'DRIVER_ARRIVED',
+            'STARTED',
+          ],
+        },
+      },
+      include: {
+        vehicle: true,
+        rideRequests: true,
+      },
+    })
+
+    if (!pool) {
+      return null
+    }
 
     return {
       poolId: pool.id,
@@ -303,16 +365,49 @@ export class PoolsService {
         name: pool.vehicle.name,
         capacity: pool.vehicle.capacity,
       },
-      passengers: pool.rideRequests.map((r) => ({
-        rideRequestId: r.id,
-        passengerId: r.passengerId,
-        pickupZone: r.pickupZone,
-        dropoffZone: r.dropoffZone,
-        seatsRequested: r.seatsRequested,
-        farePaisa: r.farePaisa,
-        status: r.status,
-      })),
-    };
+      passengers: pool.rideRequests.map(
+        (ride) => ({
+          rideRequestId: ride.id,
+          passengerId: ride.passengerId,
+          pickupZone: ride.pickupZone,
+          dropoffZone: ride.dropoffZone,
+          seatsRequested: ride.seatsRequested,
+          farePaisa: ride.farePaisa,
+          status: ride.status,
+        }),
+      ),
+    }
+  }
+
+  async findByIdForDriver(
+    driverId: string,
+    poolId: string,
+  ) {
+    const pool = await this.getOwnedPoolOrThrow(
+      driverId,
+      poolId,
+    )
+
+    return {
+      poolId: pool.id,
+      status: pool.status,
+      vehicle: {
+        id: pool.vehicle.id,
+        name: pool.vehicle.name,
+        capacity: pool.vehicle.capacity,
+      },
+      passengers: pool.rideRequests.map(
+        (ride) => ({
+          rideRequestId: ride.id,
+          passengerId: ride.passengerId,
+          pickupZone: ride.pickupZone,
+          dropoffZone: ride.dropoffZone,
+          seatsRequested: ride.seatsRequested,
+          farePaisa: ride.farePaisa,
+          status: ride.status,
+        }),
+      ),
+    }
   }
 
   private async getOwnedPoolOrThrow(
@@ -325,17 +420,19 @@ export class PoolsService {
         vehicle: true,
         rideRequests: true,
       },
-    });
+    })
 
     if (!pool) {
-      throw new NotFoundException('Pool not found');
+      throw new NotFoundException('Pool not found')
     }
 
     if (pool.vehicle.driverId !== driverId) {
-      throw new ForbiddenException('This is not your pool');
+      throw new ForbiddenException(
+        'This is not your pool',
+      )
     }
 
-    return pool;
+    return pool
   }
 
   private async transitionPool(
@@ -347,15 +444,16 @@ export class PoolsService {
     const pool = await this.getOwnedPoolOrThrow(
       driverId,
       poolId,
-    );
+    )
 
-    assertTransition(pool.status, toStatus);
+    assertTransition(pool.status, toStatus)
 
-    // Cancelled members remain in the pool for historical membership,
-    // but they no longer participate in the active lifecycle.
+    // Cancelled members remain in the pool for historical
+    // membership, but they no longer participate in the
+    // active lifecycle.
     const activeRides = pool.rideRequests.filter(
       (ride) => ride.status !== 'CANCELLED',
-    );
+    )
 
     return this.prisma.$transaction(async (tx) => {
       await tx.pool.update({
@@ -364,15 +462,15 @@ export class PoolsService {
           status: toStatus,
           ...extraFields,
         },
-      });
+      })
 
       for (const ride of activeRides) {
-        assertTransition(ride.status, toStatus);
+        assertTransition(ride.status, toStatus)
 
         await tx.rideRequest.update({
           where: { id: ride.id },
           data: { status: toStatus },
-        });
+        })
 
         await tx.rideStatusHistory.create({
           data: {
@@ -380,14 +478,14 @@ export class PoolsService {
             fromStatus: ride.status,
             toStatus,
           },
-        });
+        })
       }
 
       return {
         poolId,
         status: toStatus,
         passengerCount: activeRides.length,
-      };
-    });
+      }
+    })
   }
 }

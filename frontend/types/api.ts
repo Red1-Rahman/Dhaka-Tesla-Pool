@@ -8,8 +8,6 @@ export type Zone =
   | "Farmgate"
   | "Bashundhara"
 
-// exact strings from common/status-machine.ts — never invent a friendlier
-// label for these, they're used verbatim in status pills.
 export type RideStatus =
   | "REQUESTED"
   | "MATCHED"
@@ -53,13 +51,61 @@ export interface RideHistoryEntry {
   status: RideStatus
 }
 
-// shape RidesController and PoolsController will eventually return —
-// lib/api-client.ts targets this so wiring in the real backend later is a
-// swap-the-body change, not a rewrite of every page.
 export interface RideRequestResponse {
   id: string
   status: RideStatus
   farePaisa: number
   poolId: string | null
   createdAt: string
+}
+
+export interface VehicleResponse {
+  id: string
+  name: string
+  capacity: number
+  isOnline: boolean
+}
+
+export interface AvailableRideResponse {
+  id: string
+  pickupZone: Zone
+  dropoffZone: Zone
+  seatsRequested: number
+  farePaisa: number
+  createdAt: string
+}
+
+export interface PoolPassengerResponse {
+  rideRequestId: string
+  passengerId: string
+  pickupZone: Zone
+  dropoffZone: Zone
+  seatsRequested: number
+  farePaisa: number
+  status: RideStatus
+}
+
+export interface PoolResponse {
+  poolId: string
+  status: RideStatus
+  vehicle: {
+    id: string
+    name: string
+    capacity: number
+  }
+  passengers: PoolPassengerResponse[]
+}
+
+export interface PoolTransitionResponse {
+  poolId: string
+  status: RideStatus
+  passengerCount: number
+}
+
+export interface AcceptRideResponse {
+  poolId: string
+  rideRequestId: string
+  status: RideStatus
+  seatsTaken: number
+  capacity: number
 }
