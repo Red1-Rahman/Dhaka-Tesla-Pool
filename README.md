@@ -30,6 +30,14 @@ Run the following commands from the project root:
 .\console\frontend.ps1
 ```
 
+> **PowerShell execution policy:** If Windows blocks the scripts because they are not digitally signed, unblock the repository's PowerShell scripts first:
+>
+> ```powershell
+> Get-ChildItem -Path .\console -Filter *.ps1 -Recurse | Unblock-File
+> ```
+>
+> Then run the commands above again.
+
 ### Linux / macOS
 
 Make the scripts executable first:
