@@ -67,6 +67,9 @@ const WALLET_BALANCE_PAISA = 128_460
 
 const THEME_STORAGE_KEY = "wallet-theme"
 
+// Simulated payment round-trip length for the demo top up.
+const TOP_UP_SIMULATED_DELAY_MS = 900
+
 function Shell({ children }: { children: ReactNode }) {
   return (
     <main className="min-h-screen">
@@ -97,7 +100,7 @@ export default function WalletPage() {
   const prefersReducedMotion = useReducedMotion()
   const topUpButtonRef = useRef<HTMLButtonElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
-  const isMountedRef = useRef(true)
+  const topUpTimeoutRef = useRef<number | null>(null)
 
   // Pick up the saved theme, falling back to the OS preference.
   useEffect(() => {
@@ -112,11 +115,15 @@ export default function WalletPage() {
     }
   }, [])
 
-  // Guards the top-up timeout below from writing to state after the
-  // component has unmounted (e.g. the user navigates away mid-top-up).
+  // Cancels a pending top up if the page unmounts mid-request. Clearing
+  // the timer (instead of flagging "unmounted") stays correct under React
+  // Strict Mode, which unmounts and remounts once in development.
   useEffect(() => {
     return () => {
-      isMountedRef.current = false
+      if (topUpTimeoutRef.current !== null) {
+        window.clearTimeout(topUpTimeoutRef.current)
+        topUpTimeoutRef.current = null
+      }
     }
   }, [])
 
@@ -177,8 +184,8 @@ export default function WalletPage() {
 
     // Demo: simulate a payment round-trip.
     // Replace with your real top-up API / payment integration.
-    window.setTimeout(() => {
-      if (!isMountedRef.current) return
+    topUpTimeoutRef.current = window.setTimeout(() => {
+      topUpTimeoutRef.current = null
 
       setBalancePaisa((current) => current + selectedPaisa)
       setRecentTransactions((current) => [
@@ -194,7 +201,7 @@ export default function WalletPage() {
       setIsProcessing(false)
       setSheetOpen(false)
       topUpButtonRef.current?.focus()
-    }, 900)
+    }, TOP_UP_SIMULATED_DELAY_MS)
   }
 
   if (isLoading) {
