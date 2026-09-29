@@ -102,10 +102,6 @@ function normalizeBangladeshPhone(phone: string): string {
 interface CreateRideInput {
   pickupZone: Zone
   dropoffZone: Zone
-  pickupLat: number
-  pickupLng: number
-  dropoffLat: number
-  dropoffLng: number
   seatsRequested: number
 }
 

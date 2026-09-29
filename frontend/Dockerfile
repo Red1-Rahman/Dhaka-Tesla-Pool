@@ -1,23 +1,30 @@
 FROM node:20-alpine AS base
+
 WORKDIR /app
 
-RUN apk add --no-cache openssl
-
 FROM base AS deps
-COPY package.json package-lock.json* ./
+
+COPY package.json package-lock.json ./
+
 RUN npm ci
 
-FROM deps AS build
+FROM base AS build
+
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate
+
 RUN npm run build
 
 FROM base AS runtime
-ENV NODE_ENV=production
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-COPY package.json ./
 
-EXPOSE 3001
-CMD ["node", "dist/main"]
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+COPY --from=build /app/public ./public
+COPY --from=build /app/.next ./.next
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./package.json
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
