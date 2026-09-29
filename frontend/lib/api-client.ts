@@ -1,6 +1,12 @@
 import type {
+  AcceptRideResponse,
+  AvailableRideResponse,
+  PoolResponse,
+  PoolTransitionResponse,
   RideRequestResponse,
   Role,
+  UserResponse,
+  VehicleResponse,
   Zone,
 } from "@/types/api"
 
