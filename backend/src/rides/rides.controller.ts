@@ -35,8 +35,8 @@ export class RidesController {
 
   @Get('available')
   @Roles('DRIVER')
-  findAvailable(@Req() req: { user: { userId: string } }) {
-    return this.ridesService.findAvailableForDrivers(req.user.userId);
+  findAvailable() {
+    return this.ridesService.findAvailableForDrivers();
   }
 
   @Get(':id')
@@ -44,7 +44,10 @@ export class RidesController {
     @Req() req: { user: { userId: string } },
     @Param('id') id: string,
   ) {
-    return this.ridesService.findOwnRideById(req.user.userId, id);
+    return this.ridesService.findOwnRideById(
+      req.user.userId,
+      id,
+    );
   }
 
   @Patch(':id/cancel')
@@ -53,6 +56,10 @@ export class RidesController {
     @Param('id') id: string,
     @Body() dto: CancelRideDto,
   ) {
-    return this.ridesService.cancel(req.user.userId, id, dto);
+    return this.ridesService.cancel(
+      req.user.userId,
+      id,
+      dto,
+    );
   }
 }
