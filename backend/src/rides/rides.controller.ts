@@ -5,10 +5,6 @@ import { RidesService } from './rides.service';
 import { CreateRideDto } from './dto/create-ride.dto';
 import { CancelRideDto } from './dto/cancel-ride.dto';
 
-// Matches docs/api-contracts.md: POST /rides, GET /rides/:id,
-// GET /rides/me, PATCH /rides/:id/cancel, GET /rides/available.
-// Most routes require a passenger, GET /rides/available overrides the
-// class-level role for drivers browsing unmatched requests.
 @Controller('rides')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Roles('PASSENGER')
@@ -25,13 +21,10 @@ export class RidesController {
     return this.ridesService.findOwnRides(req.user.userId);
   }
 
-  // Declared before ':id' on purpose, Nest/Express match routes in
-  // declaration order, 'available' would otherwise be swallowed as a
-  // value for the :id param.
   @Get('available')
   @Roles('DRIVER')
-  findAvailable() {
-    return this.ridesService.findAvailableForDrivers();
+  findAvailable(@Req() req: { user: { userId: string } }) {
+    return this.ridesService.findAvailableForDrivers(req.user.userId);
   }
 
   @Get(':id')
