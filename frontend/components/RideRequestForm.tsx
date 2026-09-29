@@ -32,15 +32,23 @@ const graphLines: [number, number][] = [
   [6, 7],
 ]
 
-interface RideRequestFormProps {
-  onSubmit?: (input: {
-    pickup: Zone
-    dropoff: Zone
-    seats: number
-  }) => void
+export interface RideRequestInput {
+  pickup: Zone
+  dropoff: Zone
+  seats: number
 }
 
-export function RideRequestForm({ onSubmit }: RideRequestFormProps) {
+interface RideRequestFormProps {
+  onSubmit?: (input: RideRequestInput) => void | Promise<void>
+  submitting?: boolean
+  error?: string | null
+}
+
+export function RideRequestForm({
+  onSubmit,
+  submitting = false,
+  error = null,
+}: RideRequestFormProps) {
   const [pickup, setPickup] = useState<Zone>("Banani")
   const [dropoff, setDropoff] = useState<Zone>("Mohakhali")
   const [seats, setSeats] = useState(1)
@@ -58,6 +66,16 @@ export function RideRequestForm({ onSubmit }: RideRequestFormProps) {
     () => calculateFare(distance, true),
     [distance],
   )
+
+  // Picking the current destination as pickup swaps the two, so they are never equal.
+  const selectPickup = (zone: Zone) => {
+    if (zone === dropoff) {
+      setDropoff(pickup)
+    }
+    setPickup(zone)
+  }
+
+  const sameZone = pickup === dropoff
 
   return (
     <>
@@ -130,7 +148,7 @@ export function RideRequestForm({ onSubmit }: RideRequestFormProps) {
             <button
               key={point.name}
               aria-label={`Select ${point.name} as pickup`}
-              onClick={() => setPickup(point.name)}
+              onClick={() => selectPickup(point.name)}
               className="absolute size-8 -translate-x-1/2 -translate-y-1/2 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
               style={{
                 left: `${point.x}%`,
@@ -221,6 +239,15 @@ export function RideRequestForm({ onSubmit }: RideRequestFormProps) {
         </div>
       </div>
 
+      {error && (
+        <p
+          role="alert"
+          className="text-[13px] text-[var(--danger)]"
+        >
+          {error}
+        </p>
+      )}
+
       <button
         onClick={() =>
           onSubmit?.({
@@ -229,15 +256,18 @@ export function RideRequestForm({ onSubmit }: RideRequestFormProps) {
             seats,
           })
         }
-        className="flex h-[52px] items-center justify-center gap-2 rounded-[8px] bg-[var(--primary)] text-[15px] font-semibold text-[var(--primary-ink)] transition-transform active:scale-[0.99]"
+        disabled={submitting || sameZone}
+        className="flex h-[52px] items-center justify-center gap-2 rounded-[8px] bg-[var(--primary)] text-[15px] font-semibold text-[var(--primary-ink)] transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <span>Request ride ·</span>
+        <span>{submitting ? "Requesting…" : "Request ride ·"}</span>
 
-        <PaisaAmount
-          value={solo.totalPaisa}
-          iconSize={15}
-          className="font-mono tabular-nums"
-        />
+        {!submitting && (
+          <PaisaAmount
+            value={solo.totalPaisa}
+            iconSize={15}
+            className="font-mono tabular-nums"
+          />
+        )}
 
         <ArrowRight
           aria-hidden="true"
