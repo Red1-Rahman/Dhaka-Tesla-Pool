@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -31,9 +29,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    # Runs migrations and seeds the story cast on every startup, safe to
-    # repeat since seed.ts upserts instead of inserting blindly.
-    command: sh -c "npx prisma migrate deploy && node dist/seed/seed.js && node dist/src/main.js"
+
+    # Run migrations, seed the demo data, then start the compiled NestJS API.
+    command: sh -c "npx prisma migrate deploy && node dist/seed/seed.js && node dist/main.js"
+
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/api/v1/health"]
       interval: 10s
