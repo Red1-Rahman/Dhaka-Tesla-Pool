@@ -8,8 +8,8 @@ interface LatLng {
 
 // This is the one swap point for a real routing provider (Google Maps
 // Distance Matrix, etc), see docs/architecture.md "the three swap points".
-// Every caller depends only on distanceKm() and zonesCompatible(), so
-// replacing the body of this class later never requires touching
+// Every caller depends only on distanceKm() and zone compatibility methods,
+// so replacing the body of this class later never requires touching
 // RidesService, FareService, or PoolsService.
 @Injectable()
 export class GeoService {
@@ -25,19 +25,33 @@ export class GeoService {
 
     const h =
       sinDLat * sinDLat +
-      Math.cos(this.toRadians(a.lat)) * Math.cos(this.toRadians(b.lat)) * sinDLng * sinDLng;
+      Math.cos(this.toRadians(a.lat)) *
+        Math.cos(this.toRadians(b.lat)) *
+        sinDLng *
+        sinDLng;
 
     const centralAngle = 2 * Math.asin(Math.min(1, Math.sqrt(h)));
     return earthRadiusKm * centralAngle;
   }
 
-  // Matching rule from docs/specs.md: pickup zones must be identical or
-  // adjacent. Dropoff compatibility is intentionally left to the pool
-  // acceptance step (feature/tesla-pooling), not this method.
+  // Matching rule from docs/specs.md: zones must be identical or adjacent.
+  // Used for pickup compatibility when accepting a ride into a pool.
   pickupZonesCompatible(zoneA: string, zoneB: string): boolean {
+    return this.zonesCompatible(zoneA, zoneB);
+  }
+
+  // Dropoff compatibility follows the same MVP zone-adjacency rule as
+  // pickup compatibility. This prevents a ride with a compatible pickup
+  // but an incompatible destination from joining the pool.
+  dropoffZonesCompatible(zoneA: string, zoneB: string): boolean {
+    return this.zonesCompatible(zoneA, zoneB);
+  }
+
+  private zonesCompatible(zoneA: string, zoneB: string): boolean {
     if (zoneA === zoneB) {
       return true;
     }
+
     const zone = ZONES[zoneA];
     return zone ? zone.adjacentTo.includes(zoneB) : false;
   }
