@@ -25,19 +25,25 @@ export default function SignUpPage() {
     setIsSubmitting(true)
 
     try {
-      await signUp(
+      const user = await signUp(
         name,
         phone,
         password,
         role,
       )
 
-      router.push("/dashboard")
+      if (user.role === "DRIVER") {
+        router.push("/dashboard")
+      } else {
+        router.push("/request")
+      }
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
       } else {
-        setError("Unable to create your account. Please try again.")
+        setError(
+          "Unable to create your account. Please try again.",
+        )
       }
     } finally {
       setIsSubmitting(false)
