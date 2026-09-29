@@ -1,8 +1,11 @@
-import { IsIn, IsInt, IsLatitude, IsLongitude, Max, Min } from 'class-validator';
+import { IsIn, IsInt, Max, Min } from 'class-validator';
 import { ZONE_NAMES } from '../../geo/zones.data';
+import { MAX_SEATS_PER_REQUEST } from '../rides.constants';
 
 // HTTP-facing field names use camelCase.
-// PostgreSQL snake_case naming remains isolated to the Prisma @map(...) layer.
+// Coordinates are not accepted from the client: the server derives them
+// from the zone names (see RidesService.create), so fare and matching can
+// never be computed from coordinates that disagree with the zone.
 export class CreateRideDto {
   @IsIn(ZONE_NAMES)
   pickupZone!: string;
@@ -10,20 +13,8 @@ export class CreateRideDto {
   @IsIn(ZONE_NAMES)
   dropoffZone!: string;
 
-  @IsLatitude()
-  pickupLat!: number;
-
-  @IsLongitude()
-  pickupLng!: number;
-
-  @IsLatitude()
-  dropoffLat!: number;
-
-  @IsLongitude()
-  dropoffLng!: number;
-
   @IsInt()
   @Min(1)
-  @Max(3) // Bullet's capacity, see docs/database-schema.md
+  @Max(MAX_SEATS_PER_REQUEST)
   seatsRequested!: number;
 }
