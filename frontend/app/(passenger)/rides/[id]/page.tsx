@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import {
   ArrowLeft,
   MessageCircle,
@@ -16,8 +17,10 @@ import {
 } from "@/lib/mock-data"
 import { PaisaAmount } from "@/components/ui/paisa-amount"
 import { PoolPassengerList } from "@/components/PoolPassengerList"
+import { RickshawSilhouette } from "@/components/RickshawSilhouette"
 import type { RideStatus } from "@/types/api"
 
+// Happy-path lifecycle, exact strings from common/status-machine.ts.
 const states: RideStatus[] = [
   "REQUESTED",
   "MATCHED",
@@ -25,6 +28,14 @@ const states: RideStatus[] = [
   "STARTED",
   "COMPLETED",
 ]
+
+// Label for the mock "advance" button, keyed by the status we are advancing from.
+const NEXT_LABEL: Partial<Record<RideStatus, string>> = {
+  REQUESTED: "Simulate match",
+  MATCHED: "I've arrived",
+  DRIVER_ARRIVED: "Start trip",
+  STARTED: "Complete trip",
+}
 
 function Timeline({ current }: { current: RideStatus }) {
   const currentIndex = states.indexOf(current)
@@ -112,142 +123,53 @@ function Timeline({ current }: { current: RideStatus }) {
   )
 }
 
-function PoolSilhouette() {
-  return (
-    <div className="relative mx-auto h-[138px] w-full max-w-[340px] rounded-[10px] bg-[var(--surface-2)] p-4">
-      <svg
-        viewBox="0 0 340 120"
-        className="size-full"
-        role="img"
-        aria-label="Tesla Bullet pool vehicle with three seats"
-      >
-        <path
-          d="M28 83h12l15-28c6-12 17-19 31-19h105c17 0 28 6 40 18l18 19h38c12 0 21 8 21 18v8H28c-8 0-12-5-12-10s4-6 12-6Z"
-          fill="none"
-          stroke="var(--ink)"
-          strokeWidth="1.5"
-        />
-
-        <path
-          d="M75 48l12-7h43l12 24H61l14-17Zm78-7h32c10 0 18 5 27 16l7 8h-55l-11-24Z"
-          fill="none"
-          stroke="var(--muted)"
-          strokeWidth="1.2"
-        />
-
-        <circle
-          cx="76"
-          cy="92"
-          r="12"
-          fill="var(--surface)"
-          stroke="var(--ink)"
-          strokeWidth="1.5"
-        />
-
-        <circle
-          cx="76"
-          cy="92"
-          r="5"
-          fill="none"
-          stroke="var(--muted)"
-          strokeWidth="1"
-        />
-
-        <circle
-          cx="250"
-          cy="92"
-          r="12"
-          fill="var(--surface)"
-          stroke="var(--ink)"
-          strokeWidth="1.5"
-        />
-
-        <circle
-          cx="250"
-          cy="92"
-          r="5"
-          fill="none"
-          stroke="var(--muted)"
-          strokeWidth="1"
-        />
-
-        <path
-          d="M284 77h19"
-          stroke="var(--muted)"
-          strokeWidth="1.5"
-        />
-
-        <path
-          d="M119 74h32M165 74h32"
-          stroke="var(--hairline)"
-          strokeWidth="1"
-        />
-      </svg>
-
-      <div className="absolute left-[34%] top-[49%] flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--primary)] text-[11px] font-semibold text-[var(--primary-ink)]">
-        NR
-      </div>
-
-      <div className="absolute left-[62%] top-[49%] flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--primary)] text-[11px] font-semibold text-[var(--primary-ink)]">
-        RA
-      </div>
-
-      <div className="absolute left-[48%] top-[48%] size-8 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[var(--faint)]" />
-    </div>
-  )
-}
-
 export default function RideDetailPage() {
   const [status, setStatus] = useState<RideStatus>("MATCHED")
   const [cancelled, setCancelled] = useState(false)
 
   const currentIndex = states.indexOf(status)
 
-  const nextLabel =
-    status === "MATCHED"
-      ? "I've arrived"
-      : status === "DRIVER_ARRIVED"
-        ? "Start trip"
-        : "Complete trip"
-
   const isCompleted = status === "COMPLETED"
   const canCancel =
     status === "REQUESTED" || status === "MATCHED"
 
+  // One entry per occupied seat, in seating order (a 2-seat request fills 2 seats).
+  const occupants = CANONICAL_POOL.flatMap((passenger) =>
+    Array<string>(passenger.seats).fill(passenger.initials),
+  )
+  const seatsTaken = occupants.length
+  const seatsOpen = VEHICLE.capacity - seatsTaken
+
+  // Receipt maths: subtotal - discount = total, all integer paisa.
+  const subtotalPaisa = CANONICAL_POOL.reduce(
+    (sum, passenger) => sum + passenger.fare.subtotalPaisa,
+    0,
+  )
+  const totalDiscountPaisa = CANONICAL_POOL.reduce(
+    (sum, passenger) => sum + passenger.fare.discountPaisa,
+    0,
+  )
   const totalFarePaisa = CANONICAL_POOL.reduce(
     (sum, passenger) => sum + passenger.fare.totalPaisa,
     0,
   )
 
-  const totalDiscountPaisa = CANONICAL_POOL.reduce(
-    (sum, passenger) => sum + passenger.fare.discountPaisa,
-    0,
-  )
-
   const advanceStatus = () =>
     setStatus(
-      states[
-        Math.min(
-          currentIndex + 1,
-          states.length - 1,
-        )
-      ],
+      states[Math.min(currentIndex + 1, states.length - 1)],
     )
 
   return (
     <main className="min-h-screen">
       <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col border-x border-[var(--hairline)] bg-[var(--canvas)] px-5 pb-28 sm:px-7">
         <header className="flex h-[68px] items-center gap-3">
-          <a
+          <Link
             href="/rides"
             aria-label="Back to rides"
             className="flex size-9 items-center justify-center rounded-full border border-[var(--hairline)] text-[var(--muted)]"
           >
-            <ArrowLeft
-              aria-hidden="true"
-              size={17}
-            />
-          </a>
+            <ArrowLeft aria-hidden="true" size={17} />
+          </Link>
 
           <div>
             <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--muted)]">
@@ -262,7 +184,7 @@ export default function RideDetailPage() {
 
         {cancelled ? (
           <div className="flex flex-col items-center gap-3 py-24 text-center">
-            <X className="text-[var(--muted)]" />
+            <X aria-hidden="true" className="text-[var(--muted)]" />
 
             <h2 className="text-[20px] font-medium">
               Ride cancelled
@@ -272,12 +194,12 @@ export default function RideDetailPage() {
               This pool is no longer active.
             </p>
 
-            <a
+            <Link
               href="/request"
               className="mt-4 rounded-[8px] bg-[var(--primary)] px-5 py-3 text-[13px] font-semibold text-[var(--primary-ink)]"
             >
               Request another ride
-            </a>
+            </Link>
           </div>
         ) : (
           <>
@@ -293,17 +215,23 @@ export default function RideDetailPage() {
                   </h2>
 
                   <p className="mt-1 font-mono text-[11px] text-[var(--muted)]">
-                    {VEHICLE.plate} · 2 / {VEHICLE.capacity} seats
-                    taken
+                    {VEHICLE.plate} · {seatsTaken} / {VEHICLE.capacity}{" "}
+                    seats taken
                   </p>
                 </div>
 
                 <span className="rounded-full bg-[var(--accent)] px-2 py-1 font-mono text-[10px] text-[#111113]">
-                  1 seat open
+                  {seatsOpen === 0
+                    ? "Full"
+                    : `${seatsOpen} seat${seatsOpen === 1 ? "" : "s"} open`}
                 </span>
               </div>
 
-              <PoolSilhouette />
+              <RickshawSilhouette
+                occupants={occupants}
+                capacity={VEHICLE.capacity}
+                label={`${VEHICLE.name}, electric rickshaw`}
+              />
 
               <p className="mt-3 text-center text-[12px] text-[var(--muted)]">
                 Shared pickup zone · different destinations
@@ -334,14 +262,14 @@ export default function RideDetailPage() {
                 aria-label={`Call ${VEHICLE.driver}`}
                 className="flex size-9 items-center justify-center rounded-full border border-[var(--hairline)] text-[var(--muted)]"
               >
-                <Phone size={15} />
+                <Phone aria-hidden="true" size={15} />
               </button>
 
               <button
                 aria-label={`Message ${VEHICLE.driver}`}
                 className="flex size-9 items-center justify-center rounded-full border border-[var(--hairline)] text-[var(--muted)]"
               >
-                <MessageCircle size={15} />
+                <MessageCircle aria-hidden="true" size={15} />
               </button>
             </section>
 
@@ -357,10 +285,10 @@ export default function RideDetailPage() {
 
                 <div className="mt-5 flex flex-col gap-2 border-y border-[var(--hairline)] py-4 font-mono text-[12px]">
                   <div className="flex items-center justify-between">
-                    <span>Passenger fares</span>
+                    <span>Fare before discount</span>
 
                     <PaisaAmount
-                      value={totalFarePaisa}
+                      value={subtotalPaisa}
                       iconSize={12}
                     />
                   </div>
@@ -393,19 +321,18 @@ export default function RideDetailPage() {
                 </div>
 
                 <button className="mt-4 flex h-11 items-center justify-center gap-2 rounded-[8px] border border-[var(--hairline)] px-4 text-[13px] text-[var(--muted)]">
-                  <Share2 size={15} />
+                  <Share2 aria-hidden="true" size={15} />
                   Share receipt
                 </button>
 
                 <div className="mt-5 flex items-center justify-between border-t border-[var(--hairline)] pt-4">
-                  <span className="text-[13px]">
-                    Rate driver
-                  </span>
+                  <span className="text-[13px]">Rate driver</span>
 
                   <span className="flex gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
                         key={star}
+                        aria-hidden="true"
                         size={16}
                         strokeWidth={1.5}
                         className="text-[var(--muted)]"
@@ -436,7 +363,7 @@ export default function RideDetailPage() {
               onClick={advanceStatus}
               className="ml-auto flex h-12 flex-1 items-center justify-center rounded-[8px] bg-[var(--primary)] text-[14px] font-semibold text-[var(--primary-ink)]"
             >
-              {nextLabel}
+              {NEXT_LABEL[status] ?? "Complete trip"}
             </button>
 
             <button
