@@ -33,7 +33,7 @@ services:
         condition: service_healthy
     # Runs migrations and seeds the story cast on every startup, safe to
     # repeat since seed.ts upserts instead of inserting blindly.
-    command: sh -c "npx prisma migrate deploy && node dist/seed/seed.js && node dist/main.js"
+    command: sh -c "npx prisma migrate deploy && node dist/seed/seed.js && node dist/src/main.js"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/api/v1/health"]
       interval: 10s
