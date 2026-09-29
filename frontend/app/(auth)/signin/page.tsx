@@ -49,8 +49,16 @@ export default function SignInPage() {
     setIsSubmitting(true)
 
     try {
-      await signIn(submittedPhone, submittedPassword)
-      router.push("/dashboard")
+      const user = await signIn(
+        submittedPhone,
+        submittedPassword,
+      )
+
+      if (user.role === "DRIVER") {
+        router.push("/dashboard")
+      } else {
+        router.push("/request")
+      }
     } catch (error) {
       if (error instanceof ApiError) {
         setError(error.message)
