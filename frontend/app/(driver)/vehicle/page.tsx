@@ -1,8 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { CarFront, Wifi, WifiOff } from "lucide-react"
+import { Wifi, WifiOff } from "lucide-react"
 import { VEHICLE } from "@/lib/mock-data"
+import { RickshawIcon } from "@/components/ui/rickshaw-icon"
+import { RickshawSilhouette } from "@/components/RickshawSilhouette"
 
 export default function VehiclePage() {
   const [isOnline, setIsOnline] = useState(true)
@@ -15,12 +17,20 @@ export default function VehiclePage() {
         </header>
 
         <section className="flex flex-1 flex-col gap-5 pt-6">
+          <RickshawSilhouette
+            occupants={[]}
+            capacity={VEHICLE.capacity}
+            label={`${VEHICLE.name}, electric rickshaw`}
+          />
+
           <div className="rounded-[14px] border border-[var(--hairline)] bg-[var(--surface)] p-5">
             <div className="flex items-center gap-3">
-              <span className="flex size-12 items-center justify-center rounded-full bg-[var(--surface-2)] text-[var(--muted)]"><CarFront size={20} strokeWidth={1.5} /></span>
+              <span className="flex size-12 items-center justify-center rounded-full bg-[var(--surface-2)] text-[var(--muted)]">
+                <RickshawIcon size={22} />
+              </span>
               <div>
                 <p className="text-[17px] font-medium">{VEHICLE.name}</p>
-                <p className="mt-0.5 font-mono text-[12px] text-[var(--muted)]">{VEHICLE.plate}</p>
+                <p className="mt-0.5 text-[12px] text-[var(--muted)]">Electric rickshaw</p>
               </div>
             </div>
             <div className="mt-5 flex items-center justify-between border-t border-[var(--hairline)] pt-4">
@@ -39,7 +49,11 @@ export default function VehiclePage() {
             className={`flex h-[52px] items-center justify-between rounded-[8px] border px-4 text-[14px] font-medium transition-colors ${isOnline ? "border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-ink)]" : "border-[var(--hairline)] bg-[var(--surface)] text-[var(--muted)]"}`}
           >
             <span>{isOnline ? "Online — accepting rides" : "Offline"}</span>
-            {isOnline ? <Wifi size={17} strokeWidth={1.5} /> : <WifiOff size={17} strokeWidth={1.5} />}
+            {isOnline ? (
+              <Wifi aria-hidden="true" size={17} strokeWidth={1.5} />
+            ) : (
+              <WifiOff aria-hidden="true" size={17} strokeWidth={1.5} />
+            )}
           </button>
 
           <p className="text-[12px] text-[var(--muted)]">
