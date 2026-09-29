@@ -16,13 +16,16 @@ interface AuthContextValue {
   currentUser: UserResponse | null
   isAuthenticated: boolean
   isLoading: boolean
-  signIn: (phone: string, password: string) => Promise<void>
+  signIn: (
+    phone: string,
+    password: string,
+  ) => Promise<UserResponse>
   signUp: (
     name: string,
     phone: string,
     password: string,
     role: Role,
-  ) => Promise<void>
+  ) => Promise<UserResponse>
   signOut: () => void
 }
 
@@ -62,7 +65,10 @@ export function AuthProvider({
   }, [loadSession])
 
   const signIn = useCallback(
-    async (phone: string, password: string) => {
+    async (
+      phone: string,
+      password: string,
+    ): Promise<UserResponse> => {
       const response = await apiClient.signin({
         phone,
         password,
@@ -72,6 +78,8 @@ export function AuthProvider({
 
       const user = await apiClient.getMe()
       setCurrentUser(user)
+
+      return user
     },
     [],
   )
@@ -82,7 +90,7 @@ export function AuthProvider({
       phone: string,
       password: string,
       role: Role,
-    ) => {
+    ): Promise<UserResponse> => {
       const response = await apiClient.signup({
         name,
         phone,
@@ -94,6 +102,8 @@ export function AuthProvider({
 
       const user = await apiClient.getMe()
       setCurrentUser(user)
+
+      return user
     },
     [],
   )
