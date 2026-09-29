@@ -1,11 +1,43 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { MapPin } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
-import { RideRequestForm } from "@/components/RideRequestForm"
+import { apiClient, ApiError } from "@/lib/api-client"
+import {
+  RideRequestForm,
+  type RideRequestInput,
+} from "@/components/RideRequestForm"
 
 export default function RequestRidePage() {
   const { currentUser, isLoading } = useAuth()
+  const router = useRouter()
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Creates the ride on the backend, then opens its detail page.
+  async function handleSubmit(input: RideRequestInput) {
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const ride = await apiClient.createRide({
+        pickupZone: input.pickup,
+        dropoffZone: input.dropoff,
+        seatsRequested: input.seats,
+      })
+
+      router.push(`/rides/${ride.id}`)
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Could not reach the server. Try again.",
+      )
+      setSubmitting(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -79,7 +111,11 @@ export default function RequestRidePage() {
             </p>
           </div>
 
-          <RideRequestForm />
+          <RideRequestForm
+            onSubmit={handleSubmit}
+            submitting={submitting}
+            error={error}
+          />
 
           <a
             href="/rides"
