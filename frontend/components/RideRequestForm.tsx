@@ -3,12 +3,7 @@
 import { useMemo, useState } from "react"
 import { ArrowRight, ChevronDown, X } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import {
-  calculateFare,
-  DISTANCE_FROM_BANANI_KM,
-  FARE,
-  ZONES,
-} from "@/lib/mock-data"
+import { calculateFare, distanceKmBetween, ZONES } from "@/lib/mock-data"
 import { PaisaAmount } from "@/components/ui/paisa-amount"
 import type { Zone } from "@/types/api"
 
@@ -52,12 +47,7 @@ export function RideRequestForm({ onSubmit }: RideRequestFormProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const prefersReducedMotion = useReducedMotion()
 
-  const distance =
-    dropoff === "Banani"
-      ? 0
-      : DISTANCE_FROM_BANANI_KM[
-          dropoff as Exclude<Zone, "Banani">
-        ]
+  const distance = distanceKmBetween(pickup, dropoff)
 
   const solo = useMemo(
     () => calculateFare(distance, false),
@@ -308,15 +298,8 @@ export function RideRequestForm({ onSubmit }: RideRequestFormProps) {
               <div className="flex max-h-[55vh] flex-col gap-1 overflow-y-auto">
                 {ZONES.filter((zone) => zone !== pickup).map(
                   (zone) => {
-                    const zoneDistance =
-                      DISTANCE_FROM_BANANI_KM[
-                        zone as Exclude<Zone, "Banani">
-                      ]
-
-                    const fare = calculateFare(
-                      zoneDistance,
-                      false,
-                    )
+                    const zoneDistance = distanceKmBetween(pickup, zone)
+                    const fare = calculateFare(zoneDistance, false)
 
                     return (
                       <button
