@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { GeoService } from '../geo/geo.service';
 import { FareService } from '../fare/fare.service';
@@ -20,12 +25,17 @@ export class RidesService {
   ) {}
 
   async create(passengerId: string, dto: CreateRideDto) {
+    if (dto.pickupZone === dto.dropoffZone) {
+      throw new BadRequestException('Pickup and destination must be different zones');
+    }
+
+    // Coordinates come from the server's zone table, never from the client.
     const pickup = ZONES[dto.pickupZone];
     const dropoff = ZONES[dto.dropoffZone];
 
     const distanceKm = this.geoService.distanceKm(
-      { lat: dto.pickupLat, lng: dto.pickupLng },
-      { lat: dto.dropoffLat, lng: dto.dropoffLng },
+      { lat: pickup.lat, lng: pickup.lng },
+      { lat: dropoff.lat, lng: dropoff.lng },
     );
 
     // Not pooled at creation time, a fare is quoted solo and only
@@ -38,10 +48,10 @@ export class RidesService {
         passengerId,
         pickupZone: pickup.name,
         dropoffZone: dropoff.name,
-        pickupLat: dto.pickupLat,
-        pickupLng: dto.pickupLng,
-        dropoffLat: dto.dropoffLat,
-        dropoffLng: dto.dropoffLng,
+        pickupLat: pickup.lat,
+        pickupLng: pickup.lng,
+        dropoffLat: dropoff.lat,
+        dropoffLng: dropoff.lng,
         seatsRequested: dto.seatsRequested,
         farePaisa,
         status: 'REQUESTED',
