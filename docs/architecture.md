@@ -1,48 +1,151 @@
 # Architecture
 
-## High-level diagram
+Dhaka Tesla Pool is three moving parts: a Next.js web app, a NestJS API and a PostgreSQL database. The API is the only component that holds business rules and the only one that talks to the database. There is no cache, message queue or other service in between.
 
 ```mermaid
-graph TD
-    A[Browser] --> B[Next.js App Router]
-    B -->|fetch, JSON over HTTPS| C[NestJS API]
-    C --> D[(PostgreSQL)]
-    C -.->|optional, seat-claim lock only| E[(Redis)]
+flowchart LR
+    Browser["Browser"] --> Web["Next.js web app<br/>:3000"]
+    Web -->|"JSON over HTTP<br/>Bearer JWT"| API["NestJS API<br/>:3001 /api/v1"]
+    API -->|"Prisma"| DB[("PostgreSQL 16")]
 ```
 
-No queues, no Kafka, no microservices. Redis, if used at all, exists solely to serialize the last-seat concurrency check described in `specs.md`. Everything else is a single Node process talking to a single Postgres instance.
+Docker Compose runs all three as separate containers. The rules the API enforces are described in [specs.md](specs.md), the endpoints in [api-contracts.md](api-contracts.md), and the tables in [database-schema.md](database-schema.md).
 
-## Layered structure inside the API
+## Backend structure
+
+Each request passes through three layers:
 
 ```
-Controller  -> validates input shape (DTO), calls a service, returns response
-Service     -> business logic, the only place state transitions happen
-Repository  -> Prisma client calls, no business logic
+Controller  ->  validates the request body (DTO), checks the role, calls a service
+Service     ->  business rules, the only place a status changes
+PrismaService  ->  database access
 ```
 
-A controller never talks to Prisma directly. A service never builds an HTTP response. This split is what makes "explain this endpoint" a three-sentence answer instead of a scroll through one giant file.
+There is no separate repository layer. Services call `PrismaService` directly, which keeps a small codebase easy to follow. The rules that keep the layers honest:
+
+- A controller never contains business rules or talks to Prisma. It validates input and delegates.
+- A service never builds an HTTP response. It returns plain objects, and it never returns a password hash.
+- Every status change goes through `assertTransition()` in `common/status-machine.ts`, never a hand written `if` chain.
+- Money is an integer number of paisa everywhere, and variable names carry a `Paisa` suffix.
+
+### Modules
+
+```mermaid
+flowchart TD
+    App["AppModule"] --> Auth & Users & Vehicles & Rides & Pools & Health
+    Rides --> Geo & Fare
+    Pools --> Geo & Fare & Payments
+    Auth & Users & Vehicles & Rides & Pools & Payments & Health --> Prisma["PrismaModule"]
+```
+
+| Module | Responsibility |
+|---|---|
+| `auth` | Sign up, sign in, JWT issuing and verification, and the roles guard. |
+| `users` | The signed in user's own profile. |
+| `vehicles` | A driver's own vehicle and whether it is online. |
+| `rides` | A passenger's requests: create, list, view and cancel. Also the list of rides waiting for a driver. |
+| `pools` | Driver side work: accepting rides into a pool, moving the pool through its lifecycle, and enforcing seat capacity. |
+| `fare` | Turns a distance into a fare in paisa. |
+| `geo` | Distance between two points, and whether two zones are compatible for pooling. |
+| `payments` | Records a payment. It has no HTTP routes and is only called by `pools`. |
+| `health` | A liveness endpoint that also checks the database. |
+| `common` | Prisma access, the status machine, money helpers and the global error filter. |
+
+### Cross-cutting behaviour
+
+Set up once, in `main.ts` and `app.module.ts`, and applied to every route:
+
+- **Prefix:** all routes live under `/api/v1`.
+- **Validation:** a global validation pipe turns DTO rules on, strips undeclared fields and rejects unknown ones with `400`.
+- **Errors:** one global filter formats every error the same way. It maps known database errors to clean `409` and `404` responses and never sends internal details to the client. Unexpected failures are logged on the server and returned as a plain `500`.
+- **Authentication:** a JWT strategy reads the Bearer token and a roles guard checks the `PASSENGER` or `DRIVER` role.
+- **CORS:** only the origins listed in `CORS_ORIGIN` may call the API from a browser.
+- **Configuration:** environment variables are validated when the API starts, so a missing setting fails at boot, not on the first request.
 
 ## The three swap points
 
-These are the parts of the system explicitly designed to be replaced later with minimum refactoring, each is a single module with a narrow interface:
+Three concerns are built to be replaced with as little change as possible. Each is a single module that the rest of the code reaches through a small set of methods.
 
-| Module | MVP implementation | Real-world replacement | What changes when you swap |
+| Module | Today | A realistic replacement | What changes |
 |---|---|---|---|
-| `geo/geo.service.ts` | Static Dhaka zone list, haversine distance | Google Maps Distance Matrix API | Only the inside of `geo.service.ts`. Callers keep using `distanceKm(a, b)` |
-| `fare/fare.service.ts` | Fixed formula (base + distance - pool discount) | Dynamic/surge pricing engine | Only the inside of `calculateFare()`. Callers keep passing the same request shape |
-| `payments/payment.service.ts` | Cash or simulated TeslaPay wallet | Stripe, bKash, Nagad, etc. | Only the inside of `charge()`. Callers keep the same method signature |
+| `geo/geo.service.ts` | Fixed zone table, haversine distance and adjacency rules | A routing provider such as the Google Maps Distance Matrix API | The bodies of `distanceKm()`, `pickupZonesCompatible()` and `dropoffZonesCompatible()`. Callers keep the same three methods. |
+| `fare/fare.service.ts` | One fixed formula with a 20% pool discount | A dynamic or surge pricing engine | The body of `calculateFare(distanceKm, pooled)`. Inputs such as time of day would extend its parameters. |
+| `payments/payments.service.ts` | Records an immediately completed cash payment | A gateway such as bKash, Nagad or Stripe | The body of `charge()`. Today `PoolsService.complete()` always passes the method `cash`, so choosing a method would also move into the caller. |
 
-If an interviewer asks "connect this to a live API," the answer is: open the one file for that concern, keep the function signature, replace the body. No controller, DTO, or database schema needs to change.
+No controller, DTO or database table needs to change for any of these.
 
-## Request flow example: Nusrat requests a ride
+## Request flows
 
-1. `POST /rides` hits `RidesController`, DTO validates pickup/dropoff/seats.
-2. `RidesService.create()` calls `GeoService.distanceKm()` for the fare estimate and `FareService.calculateFare()` to compute the quoted fare.
-3. `RidesService` writes a `RideRequest` row with status `REQUESTED` and a `RideStatusHistory` entry.
-4. Response returns the ride id, estimated fare, and status to the passenger.
+### A passenger requests a ride
 
-Matching into a pool happens later, asynchronously from the passenger's point of view, when the driver's app or a matching job evaluates open `REQUESTED` rides against `zones.data.ts` adjacency rules (see `specs.md`).
+1. `POST /rides` reaches `RidesController`, where the DTO checks the zones and the seat count.
+2. `RidesService.create()` rejects identical pickup and destination, then looks up both zones in the server's own zone table. Coordinates never come from the client.
+3. `GeoService.distanceKm()` measures the trip and `FareService.calculateFare()` quotes the solo fare.
+4. The service writes the ride with status `REQUESTED`, then a history row that moves it from `NONE` to `REQUESTED`.
+5. The response returns the ride id, status, fare and creation time.
 
+Nothing matches the ride automatically. It waits until a driver picks it up.
 
+### A driver accepts a ride
 
-> No adding infrastructure to look advanced. Every component in this diagram earns its place by solving a stated requirement (pooling, capacity, persistence, state history). Nothing is here for demo polish.
+```mermaid
+sequenceDiagram
+    participant D as Driver app
+    participant P as PoolsService
+    participant DB as PostgreSQL
+    D->>P: POST /pools/:rideRequestId/accept
+    P->>DB: Load vehicle and ride, check online and status
+    P->>DB: BEGIN
+    P->>DB: Find the vehicle's MATCHED pool
+    P->>DB: Lock the pool row (FOR UPDATE)
+    P->>DB: Re-read the pool's rides
+    P->>P: Check zone compatibility and seat capacity
+    P->>DB: Update ride and fares, add membership and history
+    P->>DB: COMMIT
+    P-->>D: 201 poolId, seatsTaken, capacity
+```
+
+If a check fails, the transaction rolls back and the driver gets a `409` with the reason. The reasoning behind the lock is in [specs.md](specs.md#concurrency-the-last-seat).
+
+### A driver runs the trip
+
+`driver-arrived`, `start` and `complete` all call one shared method that moves the pool and every active ride together inside a transaction and writes one history row per ride. After `complete` commits, `PoolsService` asks `PaymentsService` to record one payment per active ride for that ride's own fare.
+
+## Frontend
+
+The web app uses the Next.js App Router. Route groups keep the three areas apart without affecting the URLs:
+
+| Group | Pages |
+|---|---|
+| `(auth)` | Sign in and sign up. |
+| `(passenger)` | Ride request, ride list and detail, wallet. |
+| `(driver)` | Dashboard, pool detail, vehicle. |
+
+Shared pieces live in `components/` (fare breakdown, seat diagram, status badge, request form) and `lib/`.
+
+- **One API client.** `lib/api-client.ts` is the only place that calls the API. It attaches the Bearer token, and turns error responses into a typed `ApiError`.
+- **Types mirror the contract.** `types/api.ts` matches the JSON the API returns, field for field, with no casing conversion.
+- **Session.** The JWT is kept in the browser's `localStorage`. An auth context loads the signed in user, and the home page redirects by role. A `401` response clears the stored token.
+- **Status text.** Ride statuses are shown exactly as the API returns them, with no friendlier labels.
+- **Current coverage.** The API client wraps authentication, the profile and the passenger ride endpoints. The driver endpoints are not called from the web app yet, and the wallet top up is a local demo that changes no server data.
+
+The fare shown on the request form is a preview. The fare the API returns is the one that counts.
+
+## Data and consistency
+
+Accepting a ride and advancing a pool each run in one database transaction. Some work is deliberately outside one:
+
+- Creating a ride writes the ride and its history row as two separate steps, and cancelling does the same.
+- Payments are recorded after the pool's transition has committed, so a failure part way through could leave a completed pool with some rides unpaid.
+
+These and other known gaps are listed in [database-schema.md](database-schema.md).
+
+## Local runtime
+
+Docker Compose starts the services in dependency order:
+
+1. `postgres` starts and reports healthy.
+2. `api` applies the committed migrations, loads the demo data, then starts the server. The demo data is idempotent, so restarting is safe. It is meant for local use and should not run against a real database.
+3. `web` starts once the API container is up.
+
+Configuration comes from a `.env` file. The variables are listed in [tech-stack.md](tech-stack.md#configuration).
