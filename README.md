@@ -36,4 +36,10 @@ The driver can switch their vehicle status from **Offline** to **Online — Acce
 
 ![Driver switching from offline to online — accepting rides](assets/accepting-rides.gif)
 
+### Passenger - Requesting and Completing a Ride
+
+The passenger flow covers **signing in, selecting a destination, requesting a ride, and completing the ride**.
+
+![Passenger flow from login to ride completion](assets/passenger-request.gif)
+
 More screenshots and GIFs demonstrating the application's features will be added here.
