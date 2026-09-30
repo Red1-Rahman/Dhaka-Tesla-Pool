@@ -7,7 +7,7 @@ Dhaka-Tesla-Pool connects passengers traveling along compatible routes so they c
 ## Links
 
 * **Live App:** [Click Here](https://dhaka-tesla-pool-web-tvy7.onrender.com/)
-* **Demo Video:** https://example.com
+* **Presentation Video:** [Click Here](https://youtu.be/RIVBhsZaqtQ)
 
 ## App Preview
 
@@ -360,27 +360,6 @@ AI tools were used openly as part of the engineering workflow.
 * Architecture and implementation review
 * Documentation and README writing
 * Docker/CI configuration review
-
-## Deployment
-
-**Live App:** https://example.com
-
-The deployment link above is a placeholder and will be replaced with the final public deployment URL.
-
-## Demo Video
-
-**Maximum 6-minute walkthrough:** https://example.com
-
-The final video covers:
-
-1. Problem and product understanding
-2. Architecture and ERD
-3. Backend, frontend and database implementation
-4. Ride/pool lifecycle
-5. Passenger and driver flows
-6. Pooling and fare calculation
-7. An edge case/concurrency scenario
-8. Deployment/demo
 
 ## Documentation
 
