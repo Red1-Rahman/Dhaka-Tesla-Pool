@@ -51,6 +51,13 @@ export interface RideHistoryEntry {
   status: RideStatus
 }
 
+export interface UserResponse {
+  id: string
+  name: string
+  phone: string
+  role: Role
+}
+
 export interface RideRequestResponse {
   id: string
   status: RideStatus
