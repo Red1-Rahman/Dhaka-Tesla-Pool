@@ -9,8 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { apiClient, type UserResponse } from "@/lib/api-client"
-import type { Role } from "@/types/api"
+import { apiClient } from "@/lib/api-client"
+import type { Role, UserResponse } from "@/types/api"
 
 interface AuthContextValue {
   currentUser: UserResponse | null
