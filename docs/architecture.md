@@ -44,7 +44,7 @@ flowchart TD
 | `users` | The signed in user's own profile. |
 | `vehicles` | A driver's own vehicle and whether it is online. |
 | `rides` | A passenger's requests: create, list, view and cancel. Also the list of rides waiting for a driver. |
-| `pools` | Driver side work: accepting rides into a pool, moving the pool through its lifecycle, and enforcing seat capacity. |
+| `pools` | Driver side work: accepting rides into a pool, moving the pool through its lifecycle, enforcing seat capacity, and returning the driver's active pool. |
 | `fare` | Turns a distance into a fare in paisa. |
 | `geo` | Distance between two points, and whether two zones are compatible for pooling. |
 | `payments` | Records a payment. It has no HTTP routes and is only called by `pools`. |
@@ -105,11 +105,15 @@ sequenceDiagram
     P-->>D: 201 poolId, seatsTaken, capacity
 ```
 
-If a check fails, the transaction rolls back and the driver gets a `409` with the reason. The reasoning behind the lock is in [specs.md](specs.md#concurrency-the-last-seat).
+`seatsTaken` is the sum of the `seatsRequested` field across all active rides in the pool, not a raw count of ride rows. If a check fails, the transaction rolls back and the driver gets a `409` with the reason. The reasoning behind the lock is in [specs.md](specs.md#concurrency-the-last-seat).
 
 ### A driver runs the trip
 
 `driver-arrived`, `start` and `complete` all call one shared method that moves the pool and every active ride together inside a transaction and writes one history row per ride. After `complete` commits, `PoolsService` asks `PaymentsService` to record one payment per active ride for that ride's own fare.
+
+### A driver retrieves the active pool
+
+`GET /pools/active` returns the driver's current in-progress pool, if one exists. The frontend calls this on dashboard load so a driver who refreshes the page or returns after a break picks up exactly where they left off, without re-accepting anything. The endpoint returns `null` when no active pool exists.
 
 ## Frontend
 
@@ -123,13 +127,13 @@ The web app uses the Next.js App Router. Route groups keep the three areas apart
 
 Shared pieces live in `components/` (fare breakdown, seat diagram, status badge, request form) and `lib/`.
 
-- **One API client.** `lib/api-client.ts` is the only place that calls the API. It attaches the Bearer token, and turns error responses into a typed `ApiError`.
-- **Types mirror the contract.** `types/api.ts` matches the JSON the API returns, field for field, with no casing conversion.
+- **One API client.** `lib/api-client.ts` is the only place that calls the API. It attaches the Bearer token, and turns error responses into a typed `ApiError`. It covers authentication, the signed-in user's profile, all passenger ride endpoints, and the full set of driver vehicle and pool endpoints.
+- **Types mirror the contract.** `types/api.ts` matches the JSON the API returns, field for field, with no casing conversion. All modules import `UserResponse` from this single source; there is no local redefinition of that type.
 - **Session.** The JWT is kept in the browser's `localStorage`. An auth context loads the signed in user, and the home page redirects by role. A `401` response clears the stored token.
 - **Status text.** Ride statuses are shown exactly as the API returns them, with no friendlier labels.
-- **Current coverage.** The API client wraps authentication, the profile and the passenger ride endpoints. The driver endpoints are not called from the web app yet, and the wallet top up is a local demo that changes no server data.
+- **Driver workflow.** The driver dashboard reads the vehicle's online status and the active pool from the API on every load. A driver can toggle their vehicle online or offline, accept waiting ride requests, and advance the pool through every stage: matched, driver arrived, started and completed. The wallet top-up remains a local demo that changes no server data.
 
-The fare shown on the request form is a preview. The fare the API returns is the one that counts.
+The fare shown on the passenger request form is a preview. The fare the API returns is the one that counts.
 
 ## Data and consistency
 
@@ -148,4 +152,4 @@ Docker Compose starts the services in dependency order:
 2. `api` applies the committed migrations, loads the demo data, then starts the server. The demo data is idempotent, so restarting is safe. It is meant for local use and should not run against a real database.
 3. `web` starts once the API container is up.
 
-Configuration comes from a `.env` file. The variables are listed in [tech-stack.md](tech-stack.md#configuration).
+Configuration comes from a `.env` file. The variables are listed in [tech-stack.md](tech-stack.md#configuration). The `NEXT_PUBLIC_API_URL` variable must be present at Next.js build time, not only at runtime, so it is passed as a Docker build argument in the web container's build stage.
